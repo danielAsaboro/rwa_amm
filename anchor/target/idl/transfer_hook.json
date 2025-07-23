@@ -1,0 +1,556 @@
+{
+  "address": "Hos5X6SbGqyDb8FfvRgiDqWpTE9C6FcgAkXrTeryUXwB",
+  "metadata": {
+    "name": "transfer_hook",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "initialize_extra_account_meta_list",
+      "discriminator": [
+        92,
+        197,
+        174,
+        197,
+        41,
+        124,
+        19,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "extra_account_meta_list",
+          "docs": [
+            "CHECK"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  120,
+                  116,
+                  114,
+                  97,
+                  45,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "wsol_mint"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_user_kyc",
+      "discriminator": [
+        132,
+        215,
+        38,
+        127,
+        13,
+        162,
+        234,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user",
+          "docs": [
+            "CHECK"
+          ]
+        },
+        {
+          "name": "user_kyc",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  45,
+                  107,
+                  121,
+                  99
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "kyc_level",
+          "type": "u8"
+        },
+        {
+          "name": "country",
+          "type": "string"
+        },
+        {
+          "name": "state",
+          "type": "string"
+        },
+        {
+          "name": "city",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "transfer_hook",
+      "discriminator": [
+        105,
+        37,
+        101,
+        197,
+        75,
+        251,
+        102,
+        26
+      ],
+      "accounts": [
+        {
+          "name": "source_token"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "destination_token"
+        },
+        {
+          "name": "owner"
+        },
+        {
+          "name": "extra_account_meta_list",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  120,
+                  116,
+                  114,
+                  97,
+                  45,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_kyc",
+          "docs": [
+            "PDA user KYC, must belong to owner"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  45,
+                  107,
+                  121,
+                  99
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_extra_account_meta_list",
+      "discriminator": [
+        44,
+        125,
+        141,
+        226,
+        97,
+        179,
+        166,
+        96
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "extra_account_meta_list",
+          "docs": [
+            "CHECK"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  120,
+                  116,
+                  114,
+                  97,
+                  45,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "wsol_mint"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_user_kyc",
+      "discriminator": [
+        186,
+        243,
+        85,
+        149,
+        116,
+        39,
+        88,
+        200
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "user",
+          "docs": [
+            "CHECK"
+          ]
+        },
+        {
+          "name": "user_kyc",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  45,
+                  107,
+                  121,
+                  99
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_kyc_level",
+          "type": {
+            "option": "u8"
+          }
+        },
+        {
+          "name": "new_risk_score",
+          "type": {
+            "option": "u8"
+          }
+        },
+        {
+          "name": "flags_to_set",
+          "type": {
+            "option": "u8"
+          }
+        },
+        {
+          "name": "flags_to_clear",
+          "type": {
+            "option": "u8"
+          }
+        },
+        {
+          "name": "new_country",
+          "type": {
+            "option": "string"
+          }
+        },
+        {
+          "name": "new_state",
+          "type": {
+            "option": "string"
+          }
+        },
+        {
+          "name": "new_city",
+          "type": {
+            "option": "string"
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "UserKYC",
+      "discriminator": [
+        99,
+        72,
+        143,
+        203,
+        143,
+        117,
+        146,
+        250
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "UserKycNotFound",
+      "msg": "User KYC not found"
+    },
+    {
+      "code": 6001,
+      "name": "UserNotEligible",
+      "msg": "User not eligible to trade"
+    },
+    {
+      "code": 6002,
+      "name": "UserSanctioned",
+      "msg": "User sanctioned"
+    },
+    {
+      "code": 6003,
+      "name": "UserAccountFrozen",
+      "msg": "User account frozen"
+    },
+    {
+      "code": 6004,
+      "name": "UserNotKycVerified",
+      "msg": "User not KYC verified"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidKycLevel",
+      "msg": "Invalid KYC level"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidCountryCode",
+      "msg": "Invalid country code"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidStateCode",
+      "msg": "Invalid state code"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidCityName",
+      "msg": "Invalid city name"
+    }
+  ],
+  "types": [
+    {
+      "name": "UserKYC",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "kyc_level",
+            "type": "u8"
+          },
+          {
+            "name": "risk_score",
+            "type": "u8"
+          },
+          {
+            "name": "last_updated",
+            "type": "i64"
+          },
+          {
+            "name": "flags",
+            "type": "u8"
+          },
+          {
+            "name": "daily_volume",
+            "type": "u64"
+          },
+          {
+            "name": "monthly_volume",
+            "type": "u64"
+          },
+          {
+            "name": "last_reset_day",
+            "type": "i64"
+          },
+          {
+            "name": "last_reset_month",
+            "type": "i64"
+          },
+          {
+            "name": "country",
+            "type": {
+              "array": [
+                "u8",
+                2
+              ]
+            }
+          },
+          {
+            "name": "state",
+            "type": {
+              "array": [
+                "u8",
+                2
+              ]
+            }
+          },
+          {
+            "name": "city",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

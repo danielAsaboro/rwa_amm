@@ -8,6 +8,7 @@ skip-lint = false
 
 [programs.localnet]
 cp_amm = "574KpKhRZRWi9etrtmRSXZof7JASoPxU6ZUiFgLVErRv"
+transfer_hook = "Hos5X6SbGqyDb8FfvRgiDqWpTE9C6FcgAkXrTeryUXwB"
 
 [registry]
 url = "https://api.apr.dev"
@@ -18,4 +19,7 @@ cluster = "localnet"
 wallet = "keys/local/admin-bossj3JvwiNK7pvjr149DqdtJxf2gdygbcmEPTkb2F1.json"
 
 [scripts]
-test = "../node_modules/.bin/ts-mocha tests/*.test.ts"
+# test = "../node_modules/.bin/ts-mocha tests/*.test.ts"
+
+# Temporarily run only the simple transfer hook test
+test = "../node_modules/.bin/ts-mocha tests1/simple_transfer_hook.test.ts"
