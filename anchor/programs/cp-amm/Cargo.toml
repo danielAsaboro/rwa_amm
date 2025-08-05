@@ -29,6 +29,11 @@ num_enum = "0.7.0"
 num = "0.4.3"
 spl-token-metadata-interface = { version = "=0.6.0" }
 const-crypto = "0.3.0"
+spl-transfer-hook-interface = "0.10.0"
+spl-tlv-account-resolution = "0.10.0"
+spl-type-length-value = "0.9.0"
+spl-discriminator = "0.4.1"
+
 
 [dev-dependencies]
 proptest = "1.2.0"

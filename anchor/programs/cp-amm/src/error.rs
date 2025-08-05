@@ -145,4 +145,85 @@ pub enum PoolError {
 
     #[msg("Same position")]
     SamePosition,
+
+    #[msg("Is not currently transferring")]
+    IsNotCurrentlyTransferring,
+
+    #[msg("Failed to deserialize account")]
+    FailedToDeserializeAccount,
+
+    // KYC-related errors
+    #[msg("Invalid KYC level")]
+    InvalidKycLevel,
+
+    #[msg("Invalid country code")]
+    InvalidCountryCode,
+
+    #[msg("Invalid state code")]
+    InvalidStateCode,
+
+    #[msg("Invalid city name")]
+    InvalidCityName,
+
+    #[msg("Invalid risk score")]
+    InvalidRiskScore,
+
+    #[msg("User is not KYC verified")]
+    UserNotKycVerified,
+
+    #[msg("User KYC is expired")]
+    UserKycExpired,
+
+    #[msg("User is sanctioned")]
+    UserSanctioned,
+
+    #[msg("User account is frozen")]
+    UserAccountFrozen,
+
+    #[msg("User KYC not found")]
+    UserKycNotFound,
+
+    // Transfer Hook-related errors
+    #[msg("Hook program not whitelisted")]
+    UnauthorizedHookProgram,
+
+    #[msg("Hook account resolution failed")]
+    HookAccountResolutionFailed,
+
+    #[msg("Hook execution failed")]
+    HookExecutionFailed,
+
+    #[msg("Invalid hook registry")]
+    InvalidHookRegistry,
+
+    #[msg("Hook registry full")]
+    HookRegistryFull,
+
+    #[msg("Hook program already whitelisted")]
+    HookProgramAlreadyWhitelisted,
+
+    #[msg("Hook program not found in registry")]
+    HookProgramNotFound,
+
+    #[msg("Invalid extra account metas")]
+    InvalidExtraAccountMetas,
+
+    #[msg("Missing hook accounts")]
+    MissingHookAccounts,
+
+    // Reentrancy and Security errors
+    #[msg("Swap operation is locked - reentrancy protection")]
+    SwapLocked,
+
+    #[msg("Pool state validation failed after hook execution")]
+    PoolStateValidationFailed,
+
+    #[msg("Hook execution timeout - MEV protection")]
+    HookExecutionTimeout,
+
+    #[msg("Invalid slippage tolerance for hook-enabled swap")]
+    InvalidHookSlippageTolerance,
+
+    #[msg("Hook registry required for hook-enabled tokens")]
+    MissingHookRegistry,
 }

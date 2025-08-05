@@ -1,12 +1,13 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+use anchor_spl::token_interface::{ Mint, TokenAccount, TokenInterface };
 
 use crate::{
     get_pool_access_validator,
-    state::{ModifyLiquidityResult, Pool, Position},
-    token::{calculate_transfer_fee_included_amount, transfer_from_user},
+    state::{ ModifyLiquidityResult, Pool, Position },
+    token::{ calculate_transfer_fee_included_amount, transfer_from_user_with_hooks },
     u128x128_math::Rounding,
-    EvtAddLiquidity, PoolError,
+    EvtAddLiquidity,
+    PoolError,
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -55,9 +56,9 @@ pub struct AddLiquidityCtx<'info> {
 
     /// The token account for nft
     #[account(
-            constraint = position_nft_account.mint == position.load()?.nft_mint,
-            constraint = position_nft_account.amount == 1,
-            token::authority = owner
+        constraint = position_nft_account.mint == position.load()?.nft_mint,
+        constraint = position_nft_account.amount == 1,
+        token::authority = owner
     )]
     pub position_nft_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -71,24 +72,17 @@ pub struct AddLiquidityCtx<'info> {
     pub token_b_program: Interface<'info, TokenInterface>,
 }
 
-pub fn handle_add_liquidity(
-    ctx: Context<AddLiquidityCtx>,
-    params: AddLiquidityParameters,
+pub fn handle_add_liquidity<'c: 'info, 'info>(
+    ctx: Context<'_, '_, 'c, 'info, AddLiquidityCtx<'info>>,
+    params: AddLiquidityParameters
 ) -> Result<()> {
-    let AddLiquidityParameters {
-        liquidity_delta,
-        token_a_amount_threshold,
-        token_b_amount_threshold,
-    } = params;
+    let AddLiquidityParameters { liquidity_delta, token_a_amount_threshold, token_b_amount_threshold } = params;
     require!(params.liquidity_delta > 0, PoolError::InvalidParameters);
 
     {
         let pool = ctx.accounts.pool.load()?;
         let access_validator = get_pool_access_validator(&pool)?;
-        require!(
-            access_validator.can_add_liquidity(),
-            PoolError::PoolDisabled
-        );
+        require!(access_validator.can_add_liquidity(), PoolError::PoolDisabled);
     }
 
     let mut pool = ctx.accounts.pool.load_mut()?;
@@ -99,48 +93,39 @@ pub fn handle_add_liquidity(
     let current_time = Clock::get()?.unix_timestamp as u64;
     position.update_rewards(&mut pool, current_time)?;
 
-    let ModifyLiquidityResult {
-        token_a_amount,
-        token_b_amount,
-    } = pool.get_amounts_for_modify_liquidity(liquidity_delta, Rounding::Up)?;
+    let ModifyLiquidityResult { token_a_amount, token_b_amount } = pool.get_amounts_for_modify_liquidity(
+        liquidity_delta,
+        Rounding::Up
+    )?;
 
-    require!(
-        token_a_amount > 0 || token_b_amount > 0,
-        PoolError::AmountIsZero
-    );
+    require!(token_a_amount > 0 || token_b_amount > 0, PoolError::AmountIsZero);
 
     pool.apply_add_liquidity(&mut position, liquidity_delta)?;
 
-    let total_amount_a =
-        calculate_transfer_fee_included_amount(&ctx.accounts.token_a_mint, token_a_amount)?.amount;
-    let total_amount_b =
-        calculate_transfer_fee_included_amount(&ctx.accounts.token_b_mint, token_b_amount)?.amount;
+    let total_amount_a = calculate_transfer_fee_included_amount(&ctx.accounts.token_a_mint, token_a_amount)?.amount;
+    let total_amount_b = calculate_transfer_fee_included_amount(&ctx.accounts.token_b_mint, token_b_amount)?.amount;
 
-    require!(
-        total_amount_a <= token_a_amount_threshold,
-        PoolError::ExceededSlippage
-    );
-    require!(
-        total_amount_b <= token_b_amount_threshold,
-        PoolError::ExceededSlippage
-    );
+    require!(total_amount_a <= token_a_amount_threshold, PoolError::ExceededSlippage);
+    require!(total_amount_b <= token_b_amount_threshold, PoolError::ExceededSlippage);
 
-    transfer_from_user(
+    transfer_from_user_with_hooks(
         &ctx.accounts.owner,
         &ctx.accounts.token_a_mint,
         &ctx.accounts.token_a_account,
         &ctx.accounts.token_a_vault,
         &ctx.accounts.token_a_program,
         total_amount_a,
+        ctx.remaining_accounts
     )?;
 
-    transfer_from_user(
+    transfer_from_user_with_hooks(
         &ctx.accounts.owner,
         &ctx.accounts.token_b_mint,
         &ctx.accounts.token_b_account,
         &ctx.accounts.token_b_vault,
         &ctx.accounts.token_b_program,
         total_amount_b,
+        ctx.remaining_accounts
     )?;
 
     emit_cpi!(EvtAddLiquidity {

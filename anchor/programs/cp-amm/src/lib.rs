@@ -12,6 +12,7 @@ pub mod constants;
 pub mod error;
 pub mod state;
 pub use error::*;
+pub use state::hook_registry::*;
 pub mod event;
 pub use event::*;
 pub mod utils;
@@ -26,6 +27,10 @@ pub use pool_action_access::*;
 
 pub mod params;
 
+use spl_transfer_hook_interface::instruction::ExecuteInstruction;
+
+use spl_discriminator::SplDiscriminate;
+
 declare_id!("574KpKhRZRWi9etrtmRSXZof7JASoPxU6ZUiFgLVErRv");
 
 #[program]
@@ -35,10 +40,11 @@ pub mod cp_amm {
     /// ADMIN FUNCTIONS /////
 
     // create static config
+
     pub fn create_config(
         ctx: Context<CreateConfigCtx>,
         index: u64,
-        config_parameters: StaticConfigParameters,
+        config_parameters: StaticConfigParameters
     ) -> Result<()> {
         instructions::handle_create_static_config(ctx, index, config_parameters)
     }
@@ -47,7 +53,7 @@ pub mod cp_amm {
     pub fn create_dynamic_config(
         ctx: Context<CreateConfigCtx>,
         index: u64,
-        config_parameters: DynamicConfigParameters,
+        config_parameters: DynamicConfigParameters
     ) -> Result<()> {
         instructions::handle_create_dynamic_config(ctx, index, config_parameters)
     }
@@ -72,31 +78,23 @@ pub mod cp_amm {
         ctx: Context<'_, '_, 'c, 'info, InitializeRewardCtx<'info>>,
         reward_index: u8,
         reward_duration: u64,
-        funder: Pubkey,
+        funder: Pubkey
     ) -> Result<()> {
         instructions::handle_initialize_reward(ctx, reward_index, reward_duration, funder)
     }
 
-    pub fn fund_reward(
-        ctx: Context<FundRewardCtx>,
-        reward_index: u8,
-        amount: u64,
-        carry_forward: bool,
-    ) -> Result<()> {
+    pub fn fund_reward(ctx: Context<FundRewardCtx>, reward_index: u8, amount: u64, carry_forward: bool) -> Result<()> {
         instructions::handle_fund_reward(ctx, reward_index, amount, carry_forward)
     }
 
-    pub fn withdraw_ineligible_reward(
-        ctx: Context<WithdrawIneligibleRewardCtx>,
-        reward_index: u8,
-    ) -> Result<()> {
+    pub fn withdraw_ineligible_reward(ctx: Context<WithdrawIneligibleRewardCtx>, reward_index: u8) -> Result<()> {
         instructions::handle_withdraw_ineligible_reward(ctx, reward_index)
     }
 
     pub fn update_reward_funder(
         ctx: Context<UpdateRewardFunderCtx>,
         reward_index: u8,
-        new_funder: Pubkey,
+        new_funder: Pubkey
     ) -> Result<()> {
         instructions::handle_update_reward_funder(ctx, reward_index, new_funder)
     }
@@ -104,7 +102,7 @@ pub mod cp_amm {
     pub fn update_reward_duration(
         ctx: Context<UpdateRewardDurationCtx>,
         reward_index: u8,
-        new_duration: u64,
+        new_duration: u64
     ) -> Result<()> {
         instructions::handle_update_reward_duration(ctx, reward_index, new_duration)
     }
@@ -113,19 +111,11 @@ pub mod cp_amm {
         instructions::handle_set_pool_status(ctx, status)
     }
 
-    pub fn claim_protocol_fee(
-        ctx: Context<ClaimProtocolFeesCtx>,
-        max_amount_a: u64,
-        max_amount_b: u64,
-    ) -> Result<()> {
+    pub fn claim_protocol_fee(ctx: Context<ClaimProtocolFeesCtx>, max_amount_a: u64, max_amount_b: u64) -> Result<()> {
         instructions::handle_claim_protocol_fee(ctx, max_amount_a, max_amount_b)
     }
 
-    pub fn claim_partner_fee(
-        ctx: Context<ClaimPartnerFeesCtx>,
-        max_amount_a: u64,
-        max_amount_b: u64,
-    ) -> Result<()> {
+    pub fn claim_partner_fee(ctx: Context<ClaimPartnerFeesCtx>, max_amount_a: u64, max_amount_b: u64) -> Result<()> {
         instructions::handle_claim_partner_fee(ctx, max_amount_a, max_amount_b)
     }
 
@@ -137,21 +127,21 @@ pub mod cp_amm {
 
     pub fn initialize_pool<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, InitializePoolCtx<'info>>,
-        params: InitializePoolParameters,
+        params: InitializePoolParameters
     ) -> Result<()> {
         instructions::handle_initialize_pool(ctx, params)
     }
 
     pub fn initialize_pool_with_dynamic_config<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, InitializePoolWithDynamicConfigCtx<'info>>,
-        params: InitializeCustomizablePoolParameters,
+        params: InitializeCustomizablePoolParameters
     ) -> Result<()> {
         instructions::handle_initialize_pool_with_dynamic_config(ctx, params)
     }
 
     pub fn initialize_customizable_pool<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, InitializeCustomizablePoolCtx<'info>>,
-        params: InitializeCustomizablePoolParameters,
+        params: InitializeCustomizablePoolParameters
     ) -> Result<()> {
         instructions::handle_initialize_customizable_pool(ctx, params)
     }
@@ -160,43 +150,35 @@ pub mod cp_amm {
         instructions::handle_create_position(ctx)
     }
 
-    pub fn add_liquidity(
-        ctx: Context<AddLiquidityCtx>,
-        params: AddLiquidityParameters,
+    pub fn add_liquidity<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, AddLiquidityCtx<'info>>,
+        params: AddLiquidityParameters
     ) -> Result<()> {
         instructions::handle_add_liquidity(ctx, params)
     }
 
-    pub fn remove_liquidity(
-        ctx: Context<RemoveLiquidityCtx>,
-        params: RemoveLiquidityParameters,
-    ) -> Result<()> {
+    pub fn remove_liquidity(ctx: Context<RemoveLiquidityCtx>, params: RemoveLiquidityParameters) -> Result<()> {
         instructions::handle_remove_liquidity(
             ctx,
             Some(params.liquidity_delta),
             params.token_a_amount_threshold,
-            params.token_b_amount_threshold,
+            params.token_b_amount_threshold
         )
     }
 
     pub fn remove_all_liquidity(
         ctx: Context<RemoveLiquidityCtx>,
         token_a_amount_threshold: u64,
-        token_b_amount_threshold: u64,
+        token_b_amount_threshold: u64
     ) -> Result<()> {
-        instructions::handle_remove_liquidity(
-            ctx,
-            None,
-            token_a_amount_threshold,
-            token_b_amount_threshold,
-        )
+        instructions::handle_remove_liquidity(ctx, None, token_a_amount_threshold, token_b_amount_threshold)
     }
 
     pub fn close_position(ctx: Context<ClosePositionCtx>) -> Result<()> {
         instructions::handle_close_position(ctx)
     }
 
-    pub fn swap(ctx: Context<SwapCtx>, params: SwapParameters) -> Result<()> {
+    pub fn swap<'info>(ctx: Context<'_, '_, 'info, 'info, SwapCtx<'info>>, params: SwapParameters) -> Result<()> {
         instructions::handle_swap(ctx, params)
     }
 
@@ -209,30 +191,45 @@ pub mod cp_amm {
     }
 
     pub fn refresh_vesting<'a, 'b, 'c: 'info, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, RefreshVesting<'info>>,
+        ctx: Context<'a, 'b, 'c, 'info, RefreshVesting<'info>>
     ) -> Result<()> {
         instructions::handle_refresh_vesting(ctx)
     }
 
     pub fn permanent_lock_position(
         ctx: Context<PermanentLockPositionCtx>,
-        permanent_lock_liquidity: u128,
+        permanent_lock_liquidity: u128
     ) -> Result<()> {
         instructions::handle_permanent_lock_position(ctx, permanent_lock_liquidity)
     }
 
-    pub fn claim_reward(
-        ctx: Context<ClaimRewardCtx>,
-        reward_index: u8,
-        skip_reward: u8,
-    ) -> Result<()> {
+    pub fn claim_reward(ctx: Context<ClaimRewardCtx>, reward_index: u8, skip_reward: u8) -> Result<()> {
         instructions::handle_claim_reward(ctx, reward_index, skip_reward)
     }
 
-    pub fn split_position(
-        ctx: Context<SplitPositionCtx>,
-        params: SplitPositionParameters,
-    ) -> Result<()> {
+    pub fn split_position(ctx: Context<SplitPositionCtx>, params: SplitPositionParameters) -> Result<()> {
         instructions::handle_split_position(ctx, params)
+    }
+
+    /////// RWA AMM FUNCTIONS ////
+
+    /// Create hook registry for managing whitelisted hook programs
+    pub fn create_hook_registry(ctx: Context<CreateHookRegistry>) -> Result<()> {
+        handle_create_hook_registry(ctx)
+    }
+
+    /// Add a hook program to the whitelist
+    pub fn add_hook_program(ctx: Context<ManageHookProgram>, program_id: Pubkey) -> Result<()> {
+        handle_add_hook_program(ctx, program_id)
+    }
+
+    /// Remove a hook program from the whitelist
+    pub fn remove_hook_program(ctx: Context<ManageHookProgram>, program_id: Pubkey) -> Result<()> {
+        handle_remove_hook_program(ctx, program_id)
+    }
+
+    /// Update hook registry authority
+    pub fn update_hook_registry_authority(ctx: Context<ManageHookProgram>, new_authority: Pubkey) -> Result<()> {
+        handle_update_hook_registry_authority(ctx, new_authority)
     }
 }

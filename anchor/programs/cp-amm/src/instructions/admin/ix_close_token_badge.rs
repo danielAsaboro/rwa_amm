@@ -8,7 +8,7 @@ pub struct CloseTokenBadgeCtx<'info> {
         mut,
         close = rent_receiver
     )]
-    pub token_badge: AccountLoader<'info, TokenBadge>,
+    pub token_badge: Account<'info, TokenBadge>,
 
     #[account(
         mut,

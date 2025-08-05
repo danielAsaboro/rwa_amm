@@ -17,9 +17,9 @@ pub struct CreateTokenBadgeCtx<'info> {
             token_mint.key().as_ref(),
         ],
         bump,
-        space = 8 + TokenBadge::INIT_SPACE
+        space = 8 + 32 + 32 + 1 + 8 + 8 + 1 + 32 + 48 // TokenBadge space calculation
     )]
-    pub token_badge: AccountLoader<'info, TokenBadge>,
+    pub token_badge: Account<'info, TokenBadge>,
 
     pub token_mint: InterfaceAccount<'info, Mint>,
 
@@ -37,8 +37,7 @@ pub fn handle_create_token_badge(ctx: Context<CreateTokenBadgeCtx>) -> Result<()
         !is_supported_mint(&ctx.accounts.token_mint)?,
         PoolError::CannotCreateTokenBadgeOnSupportedMint
     );
-    let mut token_badge = ctx.accounts.token_badge.load_init()?;
-    token_badge.initialize(ctx.accounts.token_mint.key())?;
+    ctx.accounts.token_badge.initialize(ctx.accounts.token_mint.key())?;
 
     emit_cpi!(EvtCreateTokenBadge {
         token_mint: ctx.accounts.token_mint.key(),

@@ -755,7 +755,11 @@ dependencies = [
  "num_enum",
  "proptest",
  "ruint",
+ "spl-discriminator 0.4.1",
+ "spl-tlv-account-resolution 0.10.0",
  "spl-token-metadata-interface",
+ "spl-transfer-hook-interface 0.10.0",
+ "spl-type-length-value 0.9.0",
  "static_assertions",
 ]
 
