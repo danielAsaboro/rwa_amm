@@ -1,11 +1,4 @@
-import {
-  AnchorProvider,
-  BN,
-  IdlAccounts,
-  IdlTypes,
-  Program,
-  Wallet,
-} from "@coral-xyz/anchor";
+import { AnchorProvider, BN, IdlAccounts, IdlTypes, Program, Wallet } from '@coral-xyz/anchor'
 import {
   AccountLayout,
   getAssociatedTokenAddressSync,
@@ -22,21 +15,24 @@ import {
   MintCloseAuthorityLayout,
   MetadataPointerLayout,
   unpackAccount,
-} from "@solana/spl-token";
-import { unpack } from "@solana/spl-token-metadata";
+} from '@solana/spl-token'
+import { unpack } from '@solana/spl-token-metadata'
 import {
   AccountInfo,
+  AccountMeta,
   clusterApiUrl,
   ComputeBudgetProgram,
   Connection,
   Keypair,
   PublicKey,
   SystemProgram,
-} from "@solana/web3.js";
-import { BanksClient } from "solana-bankrun";
-import CpAmmIDL from "../../target/idl/cp_amm.json";
-import { CpAmm } from "../../target/types/cp_amm";
-import { getOrCreateAssociatedTokenAccount } from "./token";
+} from '@solana/web3.js'
+import { BanksClient } from 'solana-bankrun'
+import CpAmmIDL from '../../target/idl/cp_amm.json'
+import TransferHookIDL from '../../target/idl/transfer_hook.json'
+import { CpAmm } from '../../target/types/cp_amm'
+import { TransferHook } from '../../target/types/transfer_hook'
+import { getOrCreateAssociatedTokenAccount } from './token'
 import {
   deriveClaimFeeOperatorAddress,
   deriveConfigAddress,
@@ -48,96 +44,100 @@ import {
   deriveRewardVaultAddress,
   deriveTokenBadgeAddress,
   deriveTokenVaultAddress,
-} from "./accounts";
-import { processTransactionMaybeThrow } from "./common";
-import { CP_AMM_PROGRAM_ID } from "./constants";
-import { assert, expect } from "chai";
+} from './accounts'
+import { processTransactionMaybeThrow } from './common'
+import { TRANSFER_HOOK_PROGRAM_ID } from './constants'
+import { assert, expect } from 'chai'
 
-export type Pool = IdlAccounts<CpAmm>["pool"];
-export type Position = IdlAccounts<CpAmm>["position"];
-export type Vesting = IdlAccounts<CpAmm>["vesting"];
-export type Config = IdlAccounts<CpAmm>["config"];
-export type LockPositionParams = IdlTypes<CpAmm>["vestingParameters"];
-export type TokenBadge = IdlAccounts<CpAmm>["tokenBadge"];
+export type Pool = IdlAccounts<CpAmm>['pool']
+export type Position = IdlAccounts<CpAmm>['position']
+export type Vesting = IdlAccounts<CpAmm>['vesting']
+export type Config = IdlAccounts<CpAmm>['config']
+export type LockPositionParams = IdlTypes<CpAmm>['vestingParameters']
+export type TokenBadge = IdlAccounts<CpAmm>['tokenBadge']
 
 export function getSecondKey(key1: PublicKey, key2: PublicKey) {
-  const buf1 = key1.toBuffer();
-  const buf2 = key2.toBuffer();
+  const buf1 = key1.toBuffer()
+  const buf2 = key2.toBuffer()
   // Buf1 > buf2
   if (Buffer.compare(buf1, buf2) === 1) {
-    return buf2;
+    return buf2
   }
-  return buf1;
+  return buf1
 }
 
 export function getFirstKey(key1: PublicKey, key2: PublicKey) {
-  const buf1 = key1.toBuffer();
-  const buf2 = key2.toBuffer();
+  const buf1 = key1.toBuffer()
+  const buf2 = key2.toBuffer()
   // Buf1 > buf2
   if (Buffer.compare(buf1, buf2) === 1) {
-    return buf1;
+    return buf1
   }
-  return buf2;
+  return buf2
 }
 
 // For create program instruction only
 export function createCpAmmProgram() {
-  const wallet = new Wallet(Keypair.generate());
-  const provider = new AnchorProvider(
-    new Connection(clusterApiUrl("devnet")),
-    wallet,
-    {}
-  );
-  const program = new Program<CpAmm>(CpAmmIDL as CpAmm, provider);
-  return program;
+  const wallet = new Wallet(Keypair.generate())
+  const provider = new AnchorProvider(new Connection(clusterApiUrl('devnet')), wallet, {})
+  const program = new Program<CpAmm>(CpAmmIDL as CpAmm, provider)
+  return program
+}
+
+// For create program instruction only
+export function createTransferHookProgram() {
+  const wallet = new Wallet(Keypair.generate())
+  const provider = new AnchorProvider(new Connection(clusterApiUrl('devnet')), wallet, {})
+  const program = new Program<TransferHook>(TransferHookIDL as TransferHook, provider)
+  return program
 }
 
 export type DynamicFee = {
-  binStep: number;
-  binStepU128: BN;
-  filterPeriod: number;
-  decayPeriod: number;
-  reductionFactor: number;
-  maxVolatilityAccumulator: number;
-  variableFeeControl: number;
-};
+  binStep: number
+  binStepU128: BN
+  filterPeriod: number
+  decayPeriod: number
+  reductionFactor: number
+  maxVolatilityAccumulator: number
+  variableFeeControl: number
+}
 
 export type BaseFee = {
-  cliffFeeNumerator: BN;
-  numberOfPeriod: number;
-  periodFrequency: BN;
-  reductionFactor: BN;
-  feeSchedulerMode: number;
-};
+  cliffFeeNumerator: BN
+  numberOfPeriod: number
+  periodFrequency: BN
+  reductionFactor: BN
+  feeSchedulerMode: number
+}
 
 export type PoolFees = {
-  baseFee: BaseFee;
-  padding: number[],
-  dynamicFee: DynamicFee | null;
-};
+  baseFee: BaseFee
+  padding: number[]
+  dynamicFee: DynamicFee | null
+}
 
 export type CreateConfigParams = {
-  poolFees: PoolFees;
-  sqrtMinPrice: BN;
-  sqrtMaxPrice: BN;
-  vaultConfigKey: PublicKey;
-  poolCreatorAuthority: PublicKey;
-  activationType: number; // 0: slot, 1: timestamp
-  collectFeeMode: number; // 0: BothToken, 1: OnlyTokenB
-};
+  poolFees: PoolFees
+  sqrtMinPrice: BN
+  sqrtMaxPrice: BN
+  vaultConfigKey: PublicKey
+  poolCreatorAuthority: PublicKey
+  activationType: number // 0: slot, 1: timestamp
+  collectFeeMode: number // 0: BothToken, 1: OnlyTokenB
+}
 
 export type CreateDynamicConfigParams = {
-  poolCreatorAuthority: PublicKey;
-};
+  poolCreatorAuthority: PublicKey
+}
 
 export async function createDynamicConfigIx(
   banksClient: BanksClient,
   admin: Keypair,
   index: BN,
-  params: CreateDynamicConfigParams
+  params: CreateDynamicConfigParams,
 ): Promise<PublicKey> {
-  const program = createCpAmmProgram();
-  const config = deriveConfigAddress(index);
+  const program = createCpAmmProgram()
+  const config = deriveConfigAddress(index)
   const transaction = await program.methods
     .createDynamicConfig(index, params)
     .accountsPartial({
@@ -145,33 +145,31 @@ export async function createDynamicConfigIx(
       admin: admin.publicKey,
       systemProgram: SystemProgram.programId,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(admin);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(admin)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
   // Check data
-  const configState = await getConfig(banksClient, config);
-  expect(configState.poolCreatorAuthority.toString()).eq(
-    params.poolCreatorAuthority.toString()
-  );
+  const configState = await getConfig(banksClient, config)
+  expect(configState.poolCreatorAuthority.toString()).eq(params.poolCreatorAuthority.toString())
 
-  expect(configState.configType).eq(1); // ConfigType: Dynamic
+  expect(configState.configType).eq(1) // ConfigType: Dynamic
 
-  return config;
+  return config
 }
 
 export async function createConfigIx(
   banksClient: BanksClient,
   admin: Keypair,
   index: BN,
-  params: CreateConfigParams
+  params: CreateConfigParams,
 ): Promise<PublicKey> {
-  const program = createCpAmmProgram();
+  const program = createCpAmmProgram()
 
-  const config = deriveConfigAddress(index);
+  const config = deriveConfigAddress(index)
   const transaction = await program.methods
     .createConfig(index, params)
     .accountsPartial({
@@ -179,64 +177,38 @@ export async function createConfigIx(
       admin: admin.publicKey,
       systemProgram: SystemProgram.programId,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(admin);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(admin)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
   // Check data
-  const configState = await getConfig(banksClient, config);
-  expect(configState.vaultConfigKey.toString()).eq(
-    params.vaultConfigKey.toString()
-  );
-  expect(configState.poolCreatorAuthority.toString()).eq(
-    params.poolCreatorAuthority.toString()
-  );
-  expect(configState.activationType).eq(params.activationType);
-  expect(configState.collectFeeMode).eq(params.collectFeeMode);
-  expect(configState.sqrtMinPrice.toNumber()).eq(
-    params.sqrtMinPrice.toNumber()
-  );
-  expect(configState.sqrtMaxPrice.toString()).eq(
-    params.sqrtMaxPrice.toString()
-  );
+  const configState = await getConfig(banksClient, config)
+  expect(configState.vaultConfigKey.toString()).eq(params.vaultConfigKey.toString())
+  expect(configState.poolCreatorAuthority.toString()).eq(params.poolCreatorAuthority.toString())
+  expect(configState.activationType).eq(params.activationType)
+  expect(configState.collectFeeMode).eq(params.collectFeeMode)
+  expect(configState.sqrtMinPrice.toNumber()).eq(params.sqrtMinPrice.toNumber())
+  expect(configState.sqrtMaxPrice.toString()).eq(params.sqrtMaxPrice.toString())
   expect(configState.poolFees.baseFee.cliffFeeNumerator.toNumber()).eq(
-    params.poolFees.baseFee.cliffFeeNumerator.toNumber()
-  );
-  expect(configState.poolFees.baseFee.numberOfPeriod).eq(
-    params.poolFees.baseFee.numberOfPeriod
-  );
-  expect(configState.poolFees.baseFee.reductionFactor.toNumber()).eq(
-    params.poolFees.baseFee.reductionFactor.toNumber()
-  );
-  expect(configState.poolFees.baseFee.feeSchedulerMode).eq(
-    params.poolFees.baseFee.feeSchedulerMode
-  );
-  expect(configState.poolFees.baseFee.periodFrequency.toNumber()).eq(
-    params.poolFees.baseFee.periodFrequency.toNumber()
-  );
-  expect(configState.poolFees.protocolFeePercent).eq(
-    20
-  );
-  expect(configState.poolFees.partnerFeePercent).eq(
-    0
-  );
-  expect(configState.poolFees.referralFeePercent).eq(
-    20
-  );
-  expect(configState.configType).eq(0); // ConfigType: Static
+    params.poolFees.baseFee.cliffFeeNumerator.toNumber(),
+  )
+  expect(configState.poolFees.baseFee.numberOfPeriod).eq(params.poolFees.baseFee.numberOfPeriod)
+  expect(configState.poolFees.baseFee.reductionFactor.toNumber()).eq(params.poolFees.baseFee.reductionFactor.toNumber())
+  expect(configState.poolFees.baseFee.feeSchedulerMode).eq(params.poolFees.baseFee.feeSchedulerMode)
+  expect(configState.poolFees.baseFee.periodFrequency.toNumber()).eq(params.poolFees.baseFee.periodFrequency.toNumber())
+  expect(configState.poolFees.protocolFeePercent).eq(20)
+  expect(configState.poolFees.partnerFeePercent).eq(0)
+  expect(configState.poolFees.referralFeePercent).eq(20)
+  expect(configState.configType).eq(0) // ConfigType: Static
 
-  return config;
+  return config
 }
 
-export async function closeConfigIx(
-  banksClient: BanksClient,
-  admin: Keypair,
-  config: PublicKey
-) {
-  const program = createCpAmmProgram();
+export async function closeConfigIx(banksClient: BanksClient, admin: Keypair, config: PublicKey) {
+  const program = createCpAmmProgram()
   const transaction = await program.methods
     .closeConfig()
     .accountsPartial({
@@ -244,28 +216,25 @@ export async function closeConfigIx(
       admin: admin.publicKey,
       rentReceiver: admin.publicKey,
     })
-    .transaction();
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(admin);
+    .transaction()
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(admin)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
-  const configState = await banksClient.getAccount(config);
-  expect(configState).to.be.null;
+  const configState = await banksClient.getAccount(config)
+  expect(configState).to.be.null
 }
 
 export type CreateTokenBadgeParams = {
-  tokenMint: PublicKey;
-  admin: Keypair;
-};
+  tokenMint: PublicKey
+  admin: Keypair
+}
 
-export async function createTokenBadge(
-  banksClient: BanksClient,
-  params: CreateTokenBadgeParams
-) {
-  const { tokenMint, admin } = params;
-  const program = createCpAmmProgram();
-  const tokenBadge = deriveTokenBadgeAddress(tokenMint);
+export async function createTokenBadge(banksClient: BanksClient, params: CreateTokenBadgeParams) {
+  const { tokenMint, admin } = params
+  const program = createCpAmmProgram()
+  const tokenBadge = deriveTokenBadgeAddress(tokenMint)
   const transaction = await program.methods
     .createTokenBadge()
     .accountsPartial({
@@ -274,29 +243,26 @@ export async function createTokenBadge(
       admin: admin.publicKey,
       systemProgram: SystemProgram.programId,
     })
-    .transaction();
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(admin);
+    .transaction()
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(admin)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
-  const tokenBadgeState = await getTokenBadge(banksClient, tokenBadge);
+  const tokenBadgeState = await getTokenBadge(banksClient, tokenBadge)
 
-  expect(tokenBadgeState.tokenMint.toString()).eq(tokenMint.toString());
+  expect(tokenBadgeState.tokenMint.toString()).eq(tokenMint.toString())
 }
 
 export type CloseTokenBadgeParams = {
-  tokenMint: PublicKey;
-  admin: Keypair;
-};
+  tokenMint: PublicKey
+  admin: Keypair
+}
 
-export async function closeTokenBadge(
-  banksClient: BanksClient,
-  params: CloseTokenBadgeParams
-) {
-  const { tokenMint, admin } = params;
-  const program = createCpAmmProgram();
-  const tokenBadge = deriveTokenBadgeAddress(tokenMint);
+export async function closeTokenBadge(banksClient: BanksClient, params: CloseTokenBadgeParams) {
+  const { tokenMint, admin } = params
+  const program = createCpAmmProgram()
+  const tokenBadge = deriveTokenBadgeAddress(tokenMint)
   const transaction = await program.methods
     .closeTokenBadge()
     .accountsPartial({
@@ -304,27 +270,24 @@ export async function closeTokenBadge(
       admin: admin.publicKey,
       rentReceiver: admin.publicKey,
     })
-    .transaction();
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(admin);
+    .transaction()
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(admin)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
-  const tokenBadgeAccount = await banksClient.getAccount(tokenBadge);
-  expect(tokenBadgeAccount).to.be.null;
+  await processTransactionMaybeThrow(banksClient, transaction)
+  const tokenBadgeAccount = await banksClient.getAccount(tokenBadge)
+  expect(tokenBadgeAccount).to.be.null
 }
 
 export type ClaimFeeOperatorParams = {
-  admin: Keypair;
-  operator: PublicKey;
-};
-export async function createClaimFeeOperator(
-  banksClient: BanksClient,
-  params: ClaimFeeOperatorParams
-) {
-  const program = createCpAmmProgram();
-  const { admin, operator } = params;
+  admin: Keypair
+  operator: PublicKey
+}
+export async function createClaimFeeOperator(banksClient: BanksClient, params: ClaimFeeOperatorParams) {
+  const program = createCpAmmProgram()
+  const { admin, operator } = params
 
-  const claimFeeOperator = deriveClaimFeeOperatorAddress(operator);
+  const claimFeeOperator = deriveClaimFeeOperatorAddress(operator)
   const transaction = await program.methods
     .createClaimFeeOperator()
     .accountsPartial({
@@ -333,27 +296,24 @@ export async function createClaimFeeOperator(
       admin: admin.publicKey,
       systemProgram: SystemProgram.programId,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(admin);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(admin)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export type CloseFeeOperatorParams = {
-  admin: Keypair;
-  operator: PublicKey;
-  rentReceiver: PublicKey;
-};
-export async function closeClaimFeeOperator(
-  banksClient: BanksClient,
-  params: CloseFeeOperatorParams
-) {
-  const program = createCpAmmProgram();
-  const { admin, operator, rentReceiver } = params;
+  admin: Keypair
+  operator: PublicKey
+  rentReceiver: PublicKey
+}
+export async function closeClaimFeeOperator(banksClient: BanksClient, params: CloseFeeOperatorParams) {
+  const program = createCpAmmProgram()
+  const { admin, operator, rentReceiver } = params
 
-  const claimFeeOperator = deriveClaimFeeOperatorAddress(operator);
+  const claimFeeOperator = deriveClaimFeeOperatorAddress(operator)
   const transaction = await program.methods
     .closeClaimFeeOperator()
     .accountsPartial({
@@ -361,81 +321,60 @@ export async function closeClaimFeeOperator(
       rentReceiver,
       admin: admin.publicKey,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(admin);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(admin)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
-  const account = await banksClient.getAccount(claimFeeOperator);
+  const account = await banksClient.getAccount(claimFeeOperator)
 
-  expect(account).to.be.null;
+  expect(account).to.be.null
 }
 
 export type ClaimProtocolFeeParams = {
-  operator: Keypair;
-  pool: PublicKey;
-  treasury: PublicKey;
-};
-export async function claimProtocolFee(
-  banksClient: BanksClient,
-  params: ClaimProtocolFeeParams
-) {
-  const program = createCpAmmProgram();
-  const { operator, pool, treasury } = params;
-  const poolAuthority = derivePoolAuthority();
-  const claimFeeOperator = deriveClaimFeeOperatorAddress(operator.publicKey);
-  const poolState = await getPool(banksClient, pool);
+  operator: Keypair
+  pool: PublicKey
+  treasury: PublicKey
+}
+export async function claimProtocolFee(banksClient: BanksClient, params: ClaimProtocolFeeParams) {
+  const program = createCpAmmProgram()
+  const { operator, pool, treasury } = params
+  const poolAuthority = derivePoolAuthority()
+  const claimFeeOperator = deriveClaimFeeOperatorAddress(operator.publicKey)
+  const poolState = await getPool(banksClient, pool)
 
-  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint))
-    .owner;
-  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint))
-    .owner;
+  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint)).owner
+  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint)).owner
 
-  const tokenAVaultAccount = (await banksClient.getAccount(
-    poolState.tokenAVault
-  )) as AccountInfo<Buffer>;
+  const tokenAVaultAccount = (await banksClient.getAccount(poolState.tokenAVault)) as AccountInfo<Buffer>
 
-  const tokenBVaultAccount = (await banksClient.getAccount(
-    poolState.tokenBVault
-  )) as AccountInfo<Buffer>;
+  const tokenBVaultAccount = (await banksClient.getAccount(poolState.tokenBVault)) as AccountInfo<Buffer>
 
-  const tokenAVaultState = unpackAccount(
-    poolState.tokenAVault,
-    tokenAVaultAccount,
-    tokenAProgram
-  );
+  const tokenAVaultState = unpackAccount(poolState.tokenAVault, tokenAVaultAccount, tokenAProgram)
 
-  const tokenBVaultState = unpackAccount(
-    poolState.tokenBVault,
-    tokenBVaultAccount,
-    tokenBProgram
-  );
+  const tokenBVaultState = unpackAccount(poolState.tokenBVault, tokenBVaultAccount, tokenBProgram)
 
-  const protocolFeeA = tokenAVaultState.isFrozen
-    ? new BN(0)
-    : poolState.protocolAFee;
+  const protocolFeeA = tokenAVaultState.isFrozen ? new BN(0) : poolState.protocolAFee
 
-  const protocolFeeB = tokenBVaultState.isFrozen
-    ? new BN(0)
-    : poolState.protocolBFee;
+  const protocolFeeB = tokenBVaultState.isFrozen ? new BN(0) : poolState.protocolBFee
 
   const tokenAAccount = await getOrCreateAssociatedTokenAccount(
     banksClient,
     operator,
     poolState.tokenAMint,
     treasury,
-    tokenAProgram
-  );
+    tokenAProgram,
+  )
 
   const tokenBAccount = await getOrCreateAssociatedTokenAccount(
     banksClient,
     operator,
     poolState.tokenBMint,
     treasury,
-    tokenBProgram
-  );
+    tokenBProgram,
+  )
 
   const transaction = await program.methods
     .claimProtocolFee(protocolFeeA, protocolFeeB)
@@ -453,47 +392,42 @@ export async function claimProtocolFee(
       tokenAProgram,
       tokenBProgram,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(operator);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(operator)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export type ClaimPartnerFeeParams = {
-  partner: Keypair;
-  pool: PublicKey;
-  maxAmountA: BN;
-  maxAmountB: BN;
-};
-export async function claimPartnerFee(
-  banksClient: BanksClient,
-  params: ClaimPartnerFeeParams
-) {
-  const program = createCpAmmProgram();
-  const { partner, pool, maxAmountA, maxAmountB } = params;
-  const poolAuthority = derivePoolAuthority();
-  const poolState = await getPool(banksClient, pool);
-  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint))
-    .owner;
-  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint))
-    .owner;
+  partner: Keypair
+  pool: PublicKey
+  maxAmountA: BN
+  maxAmountB: BN
+}
+export async function claimPartnerFee(banksClient: BanksClient, params: ClaimPartnerFeeParams) {
+  const program = createCpAmmProgram()
+  const { partner, pool, maxAmountA, maxAmountB } = params
+  const poolAuthority = derivePoolAuthority()
+  const poolState = await getPool(banksClient, pool)
+  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint)).owner
+  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint)).owner
   const tokenAAccount = await getOrCreateAssociatedTokenAccount(
     banksClient,
     partner,
     poolState.tokenAMint,
     partner.publicKey,
-    tokenAProgram
-  );
+    tokenAProgram,
+  )
 
   const tokenBAccount = await getOrCreateAssociatedTokenAccount(
     banksClient,
     partner,
     poolState.tokenBMint,
     partner.publicKey,
-    tokenBProgram
-  );
+    tokenBProgram,
+  )
   const transaction = await program.methods
     .claimPartnerFee(maxAmountA, maxAmountB)
     .accountsPartial({
@@ -509,66 +443,61 @@ export async function claimPartnerFee(
       tokenAProgram,
       tokenBProgram,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(partner);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(partner)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export type InitializePoolParams = {
-  payer: Keypair;
-  creator: PublicKey;
-  config: PublicKey;
-  tokenAMint: PublicKey;
-  tokenBMint: PublicKey;
-  liquidity: BN;
-  sqrtPrice: BN;
-  activationPoint: BN | null;
-};
+  payer: Keypair
+  creator: PublicKey
+  config: PublicKey
+  tokenAMint: PublicKey
+  tokenBMint: PublicKey
+  liquidity: BN
+  sqrtPrice: BN
+  activationPoint: BN | null
+}
 
 export async function initializePool(
   banksClient: BanksClient,
-  params: InitializePoolParams
+  params: InitializePoolParams,
 ): Promise<{ pool: PublicKey; position: PublicKey }> {
-  const {
-    config,
-    tokenAMint,
-    tokenBMint,
-    payer,
-    creator,
-    liquidity,
-    sqrtPrice,
-    activationPoint,
-  } = params;
-  const program = createCpAmmProgram();
+  const { config, tokenAMint, tokenBMint, payer, creator, liquidity, sqrtPrice, activationPoint } = params
+  const program = createCpAmmProgram()
 
-  const poolAuthority = derivePoolAuthority();
-  const pool = derivePoolAddress(config, tokenAMint, tokenBMint);
+  const poolAuthority = derivePoolAuthority()
+  const pool = derivePoolAddress(config, tokenAMint, tokenBMint)
 
-  const positionNftKP = Keypair.generate();
-  const position = derivePositionAddress(positionNftKP.publicKey);
-  const positionNftAccount = derivePositionNftAccount(positionNftKP.publicKey);
+  const positionNftKP = Keypair.generate()
+  const position = derivePositionAddress(positionNftKP.publicKey)
+  const positionNftAccount = derivePositionNftAccount(positionNftKP.publicKey)
 
-  const tokenAVault = deriveTokenVaultAddress(tokenAMint, pool);
-  const tokenBVault = deriveTokenVaultAddress(tokenBMint, pool);
+  const tokenAVault = deriveTokenVaultAddress(tokenAMint, pool)
+  const tokenBVault = deriveTokenVaultAddress(tokenBMint, pool)
 
-  const tokenAProgram = (await banksClient.getAccount(tokenAMint)).owner;
-  const tokenBProgram = (await banksClient.getAccount(tokenBMint)).owner;
+  const tokenAProgram = (await banksClient.getAccount(tokenAMint)).owner
+  const tokenBProgram = (await banksClient.getAccount(tokenBMint)).owner
 
-  const payerTokenA = getAssociatedTokenAddressSync(
-    tokenAMint,
-    payer.publicKey,
-    true,
-    tokenAProgram
-  );
-  const payerTokenB = getAssociatedTokenAddressSync(
-    tokenBMint,
-    payer.publicKey,
-    true,
-    tokenBProgram
-  );
+  const payerTokenA = getAssociatedTokenAddressSync(tokenAMint, payer.publicKey, true, tokenAProgram)
+  const payerTokenB = getAssociatedTokenAddressSync(tokenBMint, payer.publicKey, true, tokenBProgram)
+
+  // Prepare hook-related remaining accounts for token-2022 transfer hook
+  const [tokenAExtraAccountMetaList] = PublicKey.findProgramAddressSync(
+    [Buffer.from('extra-account-metas'), tokenAMint.toBuffer()],
+    TRANSFER_HOOK_PROGRAM_ID,
+  )
+  const [tokenBExtraAccountMetaList] = PublicKey.findProgramAddressSync(
+    [Buffer.from('extra-account-metas'), tokenBMint.toBuffer()],
+    TRANSFER_HOOK_PROGRAM_ID,
+  )
+  const [creatorKycPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from('user-kyc'), creator.toBuffer()],
+    TRANSFER_HOOK_PROGRAM_ID,
+  )
 
   let transaction = await program.methods
     .initializePool({
@@ -596,54 +525,64 @@ export async function initializePool(
       tokenBProgram,
       systemProgram: SystemProgram.programId,
     })
-    .transaction();
+    .remainingAccounts([
+      { pubkey: tokenAExtraAccountMetaList, isSigner: false, isWritable: false },
+      { pubkey: tokenBExtraAccountMetaList, isSigner: false, isWritable: false },
+      { pubkey: creatorKycPda, isSigner: false, isWritable: false },
+      // Hook program ID must be included so SPL can CPI into it
+      { pubkey: TRANSFER_HOOK_PROGRAM_ID, isSigner: false, isWritable: false },
+    ])
+    .transaction()
   // requires more compute budget than usual
   transaction.add(
     ComputeBudgetProgram.setComputeUnitLimit({
-      units: 350_000,
-    })
-  );
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(payer, positionNftKP);
+      units: 500_000,
+    }),
+    ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 1,
+    }),
+  )
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(payer, positionNftKP)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
   // validate pool data
-  const poolState = await getPool(banksClient, pool);
-  expect(poolState.tokenAMint.toString()).eq(tokenAMint.toString());
-  expect(poolState.tokenBMint.toString()).eq(tokenBMint.toString());
-  expect(poolState.tokenAVault.toString()).eq(tokenAVault.toString());
-  expect(poolState.tokenBVault.toString()).eq(tokenBVault.toString());
-  expect(poolState.liquidity.toString()).eq(liquidity.toString());
-  expect(poolState.sqrtPrice.toString()).eq(sqrtPrice.toString());
+  const poolState = await getPool(banksClient, pool)
+  expect(poolState.tokenAMint.toString()).eq(tokenAMint.toString())
+  expect(poolState.tokenBMint.toString()).eq(tokenBMint.toString())
+  expect(poolState.tokenAVault.toString()).eq(tokenAVault.toString())
+  expect(poolState.tokenBVault.toString()).eq(tokenBVault.toString())
+  expect(poolState.liquidity.toString()).eq(liquidity.toString())
+  expect(poolState.sqrtPrice.toString()).eq(sqrtPrice.toString())
 
-  expect(poolState.rewardInfos[0].initialized).eq(0);
-  expect(poolState.rewardInfos[1].initialized).eq(0);
+  expect(poolState.rewardInfos[0].initialized).eq(0)
+  expect(poolState.rewardInfos[1].initialized).eq(0)
 
-  return { pool, position: position };
+  return { pool, position: position }
 }
 
 export type InitializePoolWithCustomizeConfigParams = {
-  payer: Keypair;
-  poolCreatorAuthority: Keypair;
-  creator: PublicKey;
-  customizeConfigAddress: PublicKey;
-  tokenAMint: PublicKey;
-  tokenBMint: PublicKey;
-  poolFees: PoolFeesParams;
-  sqrtMinPrice: BN;
-  sqrtMaxPrice: BN;
-  hasAlphaVault: boolean;
-  liquidity: BN;
-  sqrtPrice: BN;
-  activationType: number;
-  collectFeeMode: number;
-  activationPoint: BN | null;
-};
+  payer: Keypair
+  poolCreatorAuthority: Keypair
+  creator: PublicKey
+  customizeConfigAddress: PublicKey
+  tokenAMint: PublicKey
+  tokenBMint: PublicKey
+  poolFees: PoolFeesParams
+  sqrtMinPrice: BN
+  sqrtMaxPrice: BN
+  hasAlphaVault: boolean
+  liquidity: BN
+  sqrtPrice: BN
+  activationType: number
+  collectFeeMode: number
+  activationPoint: BN | null
+}
 
 export async function initializePoolWithCustomizeConfig(
   banksClient: BanksClient,
-  params: InitializePoolWithCustomizeConfigParams
+  params: InitializePoolWithCustomizeConfigParams,
 ): Promise<{ pool: PublicKey; position: PublicKey }> {
   const {
     tokenAMint,
@@ -661,38 +600,24 @@ export async function initializePoolWithCustomizeConfig(
     collectFeeMode,
     activationPoint,
     activationType,
-  } = params;
-  const program = createCpAmmProgram();
+  } = params
+  const program = createCpAmmProgram()
 
-  const poolAuthority = derivePoolAuthority();
-  const pool = derivePoolAddress(
-    customizeConfigAddress,
-    tokenAMint,
-    tokenBMint
-  );
+  const poolAuthority = derivePoolAuthority()
+  const pool = derivePoolAddress(customizeConfigAddress, tokenAMint, tokenBMint)
 
-  const positionNftKP = Keypair.generate();
-  const position = derivePositionAddress(positionNftKP.publicKey);
-  const positionNftAccount = derivePositionNftAccount(positionNftKP.publicKey);
+  const positionNftKP = Keypair.generate()
+  const position = derivePositionAddress(positionNftKP.publicKey)
+  const positionNftAccount = derivePositionNftAccount(positionNftKP.publicKey)
 
-  const tokenAProgram = (await banksClient.getAccount(tokenAMint)).owner;
-  const tokenBProgram = (await banksClient.getAccount(tokenBMint)).owner;
+  const tokenAProgram = (await banksClient.getAccount(tokenAMint)).owner
+  const tokenBProgram = (await banksClient.getAccount(tokenBMint)).owner
 
-  const tokenAVault = deriveTokenVaultAddress(tokenAMint, pool);
-  const tokenBVault = deriveTokenVaultAddress(tokenBMint, pool);
+  const tokenAVault = deriveTokenVaultAddress(tokenAMint, pool)
+  const tokenBVault = deriveTokenVaultAddress(tokenBMint, pool)
 
-  const payerTokenA = getAssociatedTokenAddressSync(
-    tokenAMint,
-    payer.publicKey,
-    true,
-    tokenAProgram
-  );
-  const payerTokenB = getAssociatedTokenAddressSync(
-    tokenBMint,
-    payer.publicKey,
-    true,
-    tokenBProgram
-  );
+  const payerTokenA = getAssociatedTokenAddressSync(tokenAMint, payer.publicKey, true, tokenAProgram)
+  const payerTokenB = getAssociatedTokenAddressSync(tokenBMint, payer.publicKey, true, tokenBProgram)
 
   const transaction = await program.methods
     .initializePoolWithDynamicConfig({
@@ -726,85 +651,85 @@ export async function initializePoolWithCustomizeConfig(
       tokenBProgram,
       token2022Program: TOKEN_2022_PROGRAM_ID,
     })
-    .transaction();
+    .transaction()
   // requires more compute budget than usual
   transaction.add(
     ComputeBudgetProgram.setComputeUnitLimit({
-      units: 350_000,
-    })
-  );
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(payer, positionNftKP, poolCreatorAuthority);
+      units: 500_000,
+    }),
+    ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 1,
+    }),
+  )
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(payer, positionNftKP, poolCreatorAuthority)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
   // validate pool data
-  const poolState = await getPool(banksClient, pool);
-  expect(poolState.tokenAMint.toString()).eq(tokenAMint.toString());
-  expect(poolState.tokenBMint.toString()).eq(tokenBMint.toString());
-  expect(poolState.tokenAVault.toString()).eq(tokenAVault.toString());
-  expect(poolState.tokenBVault.toString()).eq(tokenBVault.toString());
-  expect(poolState.liquidity.toString()).eq(liquidity.toString());
-  expect(poolState.sqrtPrice.toString()).eq(sqrtPrice.toString());
-  expect(poolState.poolType).eq(1); // Pool type: customize
+  const poolState = await getPool(banksClient, pool)
+  expect(poolState.tokenAMint.toString()).eq(tokenAMint.toString())
+  expect(poolState.tokenBMint.toString()).eq(tokenBMint.toString())
+  expect(poolState.tokenAVault.toString()).eq(tokenAVault.toString())
+  expect(poolState.tokenBVault.toString()).eq(tokenBVault.toString())
+  expect(poolState.liquidity.toString()).eq(liquidity.toString())
+  expect(poolState.sqrtPrice.toString()).eq(sqrtPrice.toString())
+  expect(poolState.poolType).eq(1) // Pool type: customize
 
-  expect(poolState.rewardInfos[0].initialized).eq(0);
-  expect(poolState.rewardInfos[1].initialized).eq(0);
+  expect(poolState.rewardInfos[0].initialized).eq(0)
+  expect(poolState.rewardInfos[1].initialized).eq(0)
 
-  return { pool, position: position };
+  return { pool, position: position }
 }
 
 export type SetPoolStatusParams = {
-  admin: Keypair;
-  pool: PublicKey;
-  status: number;
-};
+  admin: Keypair
+  pool: PublicKey
+  status: number
+}
 
-export async function setPoolStatus(
-  banksClient: BanksClient,
-  params: SetPoolStatusParams
-) {
-  const { admin, pool, status } = params;
-  const program = createCpAmmProgram();
+export async function setPoolStatus(banksClient: BanksClient, params: SetPoolStatusParams) {
+  const { admin, pool, status } = params
+  const program = createCpAmmProgram()
   const transaction = await program.methods
     .setPoolStatus(status)
     .accountsPartial({
       pool,
       admin: admin.publicKey,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(admin);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(admin)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export type PoolFeesParams = {
-  baseFee: BaseFee;
-  padding: number[],
-  dynamicFee: DynamicFee | null;
-};
+  baseFee: BaseFee
+  padding: number[]
+  dynamicFee: DynamicFee | null
+}
 
 export type InitializeCustomizeablePoolParams = {
-  payer: Keypair;
-  creator: PublicKey;
-  tokenAMint: PublicKey;
-  tokenBMint: PublicKey;
-  poolFees: PoolFeesParams;
-  sqrtMinPrice: BN;
-  sqrtMaxPrice: BN;
-  hasAlphaVault: boolean;
-  liquidity: BN;
-  sqrtPrice: BN;
-  activationType: number;
-  collectFeeMode: number;
-  activationPoint: BN | null;
-};
+  payer: Keypair
+  creator: PublicKey
+  tokenAMint: PublicKey
+  tokenBMint: PublicKey
+  poolFees: PoolFeesParams
+  sqrtMinPrice: BN
+  sqrtMaxPrice: BN
+  hasAlphaVault: boolean
+  liquidity: BN
+  sqrtPrice: BN
+  activationType: number
+  collectFeeMode: number
+  activationPoint: BN | null
+}
 
 export async function initializeCustomizeablePool(
   banksClient: BanksClient,
-  params: InitializeCustomizeablePoolParams
+  params: InitializeCustomizeablePoolParams,
 ): Promise<{ pool: PublicKey; position: PublicKey }> {
   const {
     tokenAMint,
@@ -820,34 +745,24 @@ export async function initializeCustomizeablePool(
     collectFeeMode,
     activationPoint,
     activationType,
-  } = params;
-  const program = createCpAmmProgram();
+  } = params
+  const program = createCpAmmProgram()
 
-  const poolAuthority = derivePoolAuthority();
-  const pool = deriveCustomizablePoolAddress(tokenAMint, tokenBMint);
+  const poolAuthority = derivePoolAuthority()
+  const pool = deriveCustomizablePoolAddress(tokenAMint, tokenBMint)
 
-  const positionNftKP = Keypair.generate();
-  const position = derivePositionAddress(positionNftKP.publicKey);
-  const positionNftAccount = derivePositionNftAccount(positionNftKP.publicKey);
+  const positionNftKP = Keypair.generate()
+  const position = derivePositionAddress(positionNftKP.publicKey)
+  const positionNftAccount = derivePositionNftAccount(positionNftKP.publicKey)
 
-  const tokenAProgram = (await banksClient.getAccount(tokenAMint)).owner;
-  const tokenBProgram = (await banksClient.getAccount(tokenBMint)).owner;
+  const tokenAProgram = (await banksClient.getAccount(tokenAMint)).owner
+  const tokenBProgram = (await banksClient.getAccount(tokenBMint)).owner
 
-  const tokenAVault = deriveTokenVaultAddress(tokenAMint, pool);
-  const tokenBVault = deriveTokenVaultAddress(tokenBMint, pool);
+  const tokenAVault = deriveTokenVaultAddress(tokenAMint, pool)
+  const tokenBVault = deriveTokenVaultAddress(tokenBMint, pool)
 
-  const payerTokenA = getAssociatedTokenAddressSync(
-    tokenAMint,
-    payer.publicKey,
-    true,
-    tokenAProgram
-  );
-  const payerTokenB = getAssociatedTokenAddressSync(
-    tokenBMint,
-    payer.publicKey,
-    true,
-    tokenBProgram
-  );
+  const payerTokenA = getAssociatedTokenAddressSync(tokenAMint, payer.publicKey, true, tokenAProgram)
+  const payerTokenB = getAssociatedTokenAddressSync(tokenBMint, payer.publicKey, true, tokenBProgram)
 
   const transaction = await program.methods
     .initializeCustomizablePool({
@@ -880,52 +795,52 @@ export async function initializeCustomizeablePool(
       tokenBProgram,
       systemProgram: SystemProgram.programId,
     })
-    .transaction();
+    .transaction()
   // requires more compute budget than usual
   transaction.add(
     ComputeBudgetProgram.setComputeUnitLimit({
-      units: 350_000,
-    })
-  );
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(payer, positionNftKP);
+      units: 500_000,
+    }),
+    ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: 1,
+    }),
+  )
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(payer, positionNftKP)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
   // validate pool data
-  const poolState = await getPool(banksClient, pool);
-  expect(poolState.tokenAMint.toString()).eq(tokenAMint.toString());
-  expect(poolState.tokenBMint.toString()).eq(tokenBMint.toString());
-  expect(poolState.tokenAVault.toString()).eq(tokenAVault.toString());
-  expect(poolState.tokenBVault.toString()).eq(tokenBVault.toString());
-  expect(poolState.liquidity.toString()).eq(liquidity.toString());
-  expect(poolState.sqrtPrice.toString()).eq(sqrtPrice.toString());
+  const poolState = await getPool(banksClient, pool)
+  expect(poolState.tokenAMint.toString()).eq(tokenAMint.toString())
+  expect(poolState.tokenBMint.toString()).eq(tokenBMint.toString())
+  expect(poolState.tokenAVault.toString()).eq(tokenAVault.toString())
+  expect(poolState.tokenBVault.toString()).eq(tokenBVault.toString())
+  expect(poolState.liquidity.toString()).eq(liquidity.toString())
+  expect(poolState.sqrtPrice.toString()).eq(sqrtPrice.toString())
 
-  expect(poolState.rewardInfos[0].initialized).eq(0);
-  expect(poolState.rewardInfos[1].initialized).eq(0);
+  expect(poolState.rewardInfos[0].initialized).eq(0)
+  expect(poolState.rewardInfos[1].initialized).eq(0)
 
-  return { pool, position: position };
+  return { pool, position: position }
 }
 
 export type InitializeRewardParams = {
-  payer: Keypair;
-  index: number;
-  rewardDuration: BN;
-  pool: PublicKey;
-  rewardMint: PublicKey;
-};
+  payer: Keypair
+  index: number
+  rewardDuration: BN
+  pool: PublicKey
+  rewardMint: PublicKey
+}
 
-export async function initializeReward(
-  banksClient: BanksClient,
-  params: InitializeRewardParams
-): Promise<void> {
-  const { index, rewardDuration, pool, rewardMint, payer } = params;
-  const program = createCpAmmProgram();
+export async function initializeReward(banksClient: BanksClient, params: InitializeRewardParams): Promise<void> {
+  const { index, rewardDuration, pool, rewardMint, payer } = params
+  const program = createCpAmmProgram()
 
-  const poolAuthority = derivePoolAuthority();
-  const rewardVault = deriveRewardVaultAddress(pool, index);
+  const poolAuthority = derivePoolAuthority()
+  const rewardVault = deriveRewardVaultAddress(pool, index)
 
-  const tokenProgram = (await banksClient.getAccount(rewardMint)).owner;
+  const tokenProgram = (await banksClient.getAccount(rewardMint)).owner
 
   const transaction = await program.methods
     .initializeReward(index, rewardDuration, payer.publicKey)
@@ -939,121 +854,98 @@ export async function initializeReward(
       tokenProgram,
       systemProgram: SystemProgram.programId,
     })
-    .transaction();
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(payer);
+    .transaction()
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(payer)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
   // validate reward data
-  const poolState = await getPool(banksClient, pool);
-  expect(poolState.rewardInfos[index].initialized).eq(1);
-  expect(poolState.rewardInfos[index].vault.toString()).eq(
-    rewardVault.toString()
-  );
-  expect(poolState.rewardInfos[index].mint.toString()).eq(
-    rewardMint.toString()
-  );
+  const poolState = await getPool(banksClient, pool)
+  expect(poolState.rewardInfos[index].initialized).eq(1)
+  expect(poolState.rewardInfos[index].vault.toString()).eq(rewardVault.toString())
+  expect(poolState.rewardInfos[index].mint.toString()).eq(rewardMint.toString())
 }
 
 export type UpdateRewardDurationParams = {
-  index: number;
-  admin: Keypair;
-  pool: PublicKey;
-  newDuration: BN;
-};
+  index: number
+  admin: Keypair
+  pool: PublicKey
+  newDuration: BN
+}
 
 export async function updateRewardDuration(
   banksClient: BanksClient,
-  params: UpdateRewardDurationParams
+  params: UpdateRewardDurationParams,
 ): Promise<void> {
-  const { pool, admin, index, newDuration } = params;
-  const program = createCpAmmProgram();
+  const { pool, admin, index, newDuration } = params
+  const program = createCpAmmProgram()
   const transaction = await program.methods
     .updateRewardDuration(index, newDuration)
     .accountsPartial({
       pool,
       signer: admin.publicKey,
     })
-    .transaction();
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(admin);
+    .transaction()
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(admin)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
-  const poolState = await getPool(banksClient, pool);
-  expect(poolState.rewardInfos[index].rewardDuration.toNumber()).eq(
-    newDuration.toNumber()
-  );
+  const poolState = await getPool(banksClient, pool)
+  expect(poolState.rewardInfos[index].rewardDuration.toNumber()).eq(newDuration.toNumber())
 }
 
 export type UpdateRewardFunderParams = {
-  index: number;
-  admin: Keypair;
-  pool: PublicKey;
-  newFunder: PublicKey;
-};
+  index: number
+  admin: Keypair
+  pool: PublicKey
+  newFunder: PublicKey
+}
 
-export async function updateRewardFunder(
-  banksClient: BanksClient,
-  params: UpdateRewardFunderParams
-): Promise<void> {
-  const { pool, admin, index, newFunder } = params;
-  const program = createCpAmmProgram();
+export async function updateRewardFunder(banksClient: BanksClient, params: UpdateRewardFunderParams): Promise<void> {
+  const { pool, admin, index, newFunder } = params
+  const program = createCpAmmProgram()
   const transaction = await program.methods
     .updateRewardFunder(index, newFunder)
     .accountsPartial({
       pool,
       signer: admin.publicKey,
     })
-    .transaction();
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(admin);
+    .transaction()
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(admin)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
-  const poolState = await getPool(banksClient, pool);
-  expect(poolState.rewardInfos[index].funder.toString()).eq(
-    newFunder.toString()
-  );
+  const poolState = await getPool(banksClient, pool)
+  expect(poolState.rewardInfos[index].funder.toString()).eq(newFunder.toString())
 }
 
 export type FundRewardParams = {
-  funder: Keypair;
-  index: number;
-  pool: PublicKey;
-  carryForward: boolean;
-  amount: BN;
-};
+  funder: Keypair
+  index: number
+  pool: PublicKey
+  carryForward: boolean
+  amount: BN
+}
 
-export async function fundReward(
-  banksClient: BanksClient,
-  params: FundRewardParams
-): Promise<void> {
-  const { index, carryForward, pool, funder, amount } = params;
-  const program = createCpAmmProgram();
+export async function fundReward(banksClient: BanksClient, params: FundRewardParams): Promise<void> {
+  const { index, carryForward, pool, funder, amount } = params
+  const program = createCpAmmProgram()
 
-  const poolState = await getPool(banksClient, pool);
-  const rewardVault = poolState.rewardInfos[index].vault;
-  const tokenProgram = (
-    await banksClient.getAccount(poolState.rewardInfos[index].mint)
-  ).owner;
+  const poolState = await getPool(banksClient, pool)
+  const rewardVault = poolState.rewardInfos[index].vault
+  const tokenProgram = (await banksClient.getAccount(poolState.rewardInfos[index].mint)).owner
   const funderTokenAccount = getAssociatedTokenAddressSync(
     poolState.rewardInfos[index].mint,
     funder.publicKey,
     true,
-    tokenProgram
-  );
+    tokenProgram,
+  )
 
-  const rewardVaultPreBalance = Number(
-    AccountLayout.decode((await banksClient.getAccount(rewardVault)).data)
-      .amount
-  );
-  const funderPreBalance = Number(
-    AccountLayout.decode(
-      (await banksClient.getAccount(funderTokenAccount)).data
-    ).amount
-  );
+  const rewardVaultPreBalance = Number(AccountLayout.decode((await banksClient.getAccount(rewardVault)).data).amount)
+  const funderPreBalance = Number(AccountLayout.decode((await banksClient.getAccount(funderTokenAccount)).data).amount)
 
   const transaction = await program.methods
     .fundReward(index, amount, carryForward)
@@ -1065,21 +957,14 @@ export async function fundReward(
       funder: funder.publicKey,
       tokenProgram,
     })
-    .transaction();
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(funder);
+    .transaction()
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(funder)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
-  const rewardVaultPostBalance = Number(
-    AccountLayout.decode((await banksClient.getAccount(rewardVault)).data)
-      .amount
-  );
-  const funderPostBalance = Number(
-    AccountLayout.decode(
-      (await banksClient.getAccount(funderTokenAccount)).data
-    ).amount
-  );
+  const rewardVaultPostBalance = Number(AccountLayout.decode((await banksClient.getAccount(rewardVault)).data).amount)
+  const funderPostBalance = Number(AccountLayout.decode((await banksClient.getAccount(funderTokenAccount)).data).amount)
 
   // expect(funderPreBalance - funderPostBalance).eq(amount.toNumber());
 
@@ -1087,37 +972,32 @@ export async function fundReward(
 }
 
 export type ClaimRewardParams = {
-  index: number;
-  user: Keypair;
-  position: PublicKey;
-  pool: PublicKey;
-  skipReward: number;
-};
+  index: number
+  user: Keypair
+  position: PublicKey
+  pool: PublicKey
+  skipReward: number
+}
 
-export async function claimReward(
-  banksClient: BanksClient,
-  params: ClaimRewardParams
-): Promise<void> {
-  const { index, pool, user, position, skipReward } = params;
-  const program = createCpAmmProgram();
+export async function claimReward(banksClient: BanksClient, params: ClaimRewardParams): Promise<void> {
+  const { index, pool, user, position, skipReward } = params
+  const program = createCpAmmProgram()
 
-  const poolState = await getPool(banksClient, pool);
-  const positionState = await getPosition(banksClient, position);
-  const poolAuthority = derivePoolAuthority();
-  const positionNftAccount = derivePositionNftAccount(positionState.nftMint);
+  const poolState = await getPool(banksClient, pool)
+  const positionState = await getPosition(banksClient, position)
+  const poolAuthority = derivePoolAuthority()
+  const positionNftAccount = derivePositionNftAccount(positionState.nftMint)
 
   // TODO should use token flag in pool state to get token program ID
-  const tokenProgram = (
-    await banksClient.getAccount(poolState.rewardInfos[index].mint)
-  ).owner;
+  const tokenProgram = (await banksClient.getAccount(poolState.rewardInfos[index].mint)).owner
 
   const userTokenAccount = await getOrCreateAssociatedTokenAccount(
     banksClient,
     user,
     poolState.rewardInfos[index].mint,
     user.publicKey,
-    tokenProgram
-  );
+    tokenProgram,
+  )
 
   const transaction = await program.methods
     .claimReward(index, skipReward)
@@ -1132,38 +1012,36 @@ export async function claimReward(
       owner: user.publicKey,
       tokenProgram,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(user);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(user)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export type WithdrawIneligibleRewardParams = {
-  index: number;
-  funder: Keypair;
-  pool: PublicKey;
-};
+  index: number
+  funder: Keypair
+  pool: PublicKey
+}
 
 export async function withdrawIneligibleReward(
   banksClient: BanksClient,
-  params: WithdrawIneligibleRewardParams
+  params: WithdrawIneligibleRewardParams,
 ): Promise<void> {
-  const { index, pool, funder } = params;
-  const program = createCpAmmProgram();
+  const { index, pool, funder } = params
+  const program = createCpAmmProgram()
 
-  const poolState = await getPool(banksClient, pool);
-  const poolAuthority = derivePoolAuthority();
-  const tokenProgram = (
-    await banksClient.getAccount(poolState.rewardInfos[index].mint)
-  ).owner;
+  const poolState = await getPool(banksClient, pool)
+  const poolAuthority = derivePoolAuthority()
+  const tokenProgram = (await banksClient.getAccount(poolState.rewardInfos[index].mint)).owner
   const funderTokenAccount = getAssociatedTokenAddressSync(
     poolState.rewardInfos[index].mint,
     funder.publicKey,
     true,
-    tokenProgram
-  );
+    tokenProgram,
+  )
 
   const transaction = await program.methods
     .withdrawIneligibleReward(index)
@@ -1176,12 +1054,12 @@ export async function withdrawIneligibleReward(
       funder: funder.publicKey,
       tokenProgram,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(funder);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(funder)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export async function refreshVestings(
@@ -1190,11 +1068,11 @@ export async function refreshVestings(
   pool: PublicKey,
   owner: PublicKey,
   payer: Keypair,
-  vestings: PublicKey[]
+  vestings: PublicKey[],
 ) {
-  const program = createCpAmmProgram();
-  const positionState = await getPosition(banksClient, position);
-  const positionNftAccount = derivePositionNftAccount(positionState.nftMint);
+  const program = createCpAmmProgram()
+  const positionState = await getPosition(banksClient, position)
+  const positionNftAccount = derivePositionNftAccount(positionState.nftMint)
   const transaction = await program.methods
     .refreshVesting()
     .accountsPartial({
@@ -1209,27 +1087,27 @@ export async function refreshVestings(
           isSigner: false,
           isWritable: true,
           pubkey,
-        };
-      })
+        }
+      }),
     )
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(payer);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(payer)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export async function permanentLockPosition(
   banksClient: BanksClient,
   position: PublicKey,
   owner: Keypair,
-  payer: Keypair
+  payer: Keypair,
 ) {
-  const program = createCpAmmProgram();
+  const program = createCpAmmProgram()
 
-  const positionState = await getPosition(banksClient, position);
-  const positionNftAccount = derivePositionNftAccount(positionState.nftMint);
+  const positionState = await getPosition(banksClient, position)
+  const positionNftAccount = derivePositionNftAccount(positionState.nftMint)
 
   const transaction = await program.methods
     .permanentLockPosition(positionState.unlockedLiquidity)
@@ -1239,12 +1117,12 @@ export async function permanentLockPosition(
       pool: positionState.pool,
       owner: owner.publicKey,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(payer, owner);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(payer, owner)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export async function lockPosition(
@@ -1252,13 +1130,13 @@ export async function lockPosition(
   position: PublicKey,
   owner: Keypair,
   payer: Keypair,
-  params: LockPositionParams
+  params: LockPositionParams,
 ) {
-  const program = createCpAmmProgram();
-  const positionState = await getPosition(banksClient, position);
-  const positionNftAccount = derivePositionNftAccount(positionState.nftMint);
+  const program = createCpAmmProgram()
+  const positionState = await getPosition(banksClient, position)
+  const positionNftAccount = derivePositionNftAccount(positionState.nftMint)
 
-  const vestingKP = Keypair.generate();
+  const vestingKP = Keypair.generate()
 
   const transaction = await program.methods
     .lockPosition(params)
@@ -1268,32 +1146,32 @@ export async function lockPosition(
       vesting: vestingKP.publicKey,
       owner: owner.publicKey,
       pool: positionState.pool,
-      program: CP_AMM_PROGRAM_ID,
+
       systemProgram: SystemProgram.programId,
       payer: payer.publicKey,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(payer, owner, vestingKP);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(payer, owner, vestingKP)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
-  return vestingKP.publicKey;
+  return vestingKP.publicKey
 }
 
 export async function createPosition(
   banksClient: BanksClient,
   payer: Keypair,
   owner: PublicKey,
-  pool: PublicKey
+  pool: PublicKey,
 ): Promise<PublicKey> {
-  const program = createCpAmmProgram();
+  const program = createCpAmmProgram()
 
-  const positionNftKP = Keypair.generate();
-  const position = derivePositionAddress(positionNftKP.publicKey);
-  const poolAuthority = derivePoolAuthority();
-  const positionNftAccount = derivePositionNftAccount(positionNftKP.publicKey);
+  const positionNftKP = Keypair.generate()
+  const position = derivePositionAddress(positionNftKP.publicKey)
+  const poolAuthority = derivePoolAuthority()
+  const positionNftAccount = derivePositionNftAccount(positionNftKP.publicKey)
 
   const transaction = await program.methods
     .createPosition()
@@ -1308,97 +1186,79 @@ export async function createPosition(
       tokenProgram: TOKEN_2022_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(payer, positionNftKP);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(payer, positionNftKP)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 
-  const positionState = await getPosition(banksClient, position);
+  const positionState = await getPosition(banksClient, position)
 
-  expect(positionState.nftMint.toString()).eq(
-    positionNftKP.publicKey.toString()
-  );
+  expect(positionState.nftMint.toString()).eq(positionNftKP.publicKey.toString())
 
-  const positionNftData = AccountLayout.decode(
-    (await banksClient.getAccount(positionNftAccount)).data
-  );
+  const positionNftData = AccountLayout.decode((await banksClient.getAccount(positionNftAccount)).data)
 
   // validate metadata
-  const tlvData = (
-    await banksClient.getAccount(positionState.nftMint)
-  ).data.slice(ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE);
-  const metadata = unpack(
-    getExtensionData(ExtensionType.TokenMetadata, Buffer.from(tlvData))
-  );
-  expect(metadata.name).eq("Meteora Position NFT");
-  expect(metadata.symbol).eq("MPN");
+  const tlvData = (await banksClient.getAccount(positionState.nftMint)).data.slice(ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE)
+  const metadata = unpack(getExtensionData(ExtensionType.TokenMetadata, Buffer.from(tlvData)))
+  expect(metadata.name).eq('Meteora Position NFT')
+  expect(metadata.symbol).eq('MPN')
 
   // validate metadata pointer
   const metadataAddress = MetadataPointerLayout.decode(
-    getExtensionData(ExtensionType.MetadataPointer, Buffer.from(tlvData))
-  ).metadataAddress;
-  expect(metadataAddress.toString()).eq(positionState.nftMint.toString());
+    getExtensionData(ExtensionType.MetadataPointer, Buffer.from(tlvData)),
+  ).metadataAddress
+  expect(metadataAddress.toString()).eq(positionState.nftMint.toString())
 
   // validate owner
-  expect(positionNftData.owner.toString()).eq(owner.toString());
-  expect(Number(positionNftData.amount)).eq(1);
-  expect(positionNftData.mint.toString()).eq(
-    positionNftKP.publicKey.toString()
-  );
+  expect(positionNftData.owner.toString()).eq(owner.toString())
+  expect(Number(positionNftData.amount)).eq(1)
+  expect(positionNftData.mint.toString()).eq(positionNftKP.publicKey.toString())
 
-  return position;
+  return position
 }
 
 export type AddLiquidityParams = {
-  owner: Keypair;
-  pool: PublicKey;
-  position: PublicKey;
-  liquidityDelta: BN;
-  tokenAAmountThreshold: BN;
-  tokenBAmountThreshold: BN;
-};
+  owner: Keypair
+  pool: PublicKey
+  position: PublicKey
+  liquidityDelta: BN
+  tokenAAmountThreshold: BN
+  tokenBAmountThreshold: BN
+}
 
-export async function addLiquidity(
-  banksClient: BanksClient,
-  params: AddLiquidityParams
-) {
-  const {
-    owner,
-    pool,
-    position,
-    liquidityDelta,
-    tokenAAmountThreshold,
-    tokenBAmountThreshold,
-  } = params;
+export async function addLiquidity(banksClient: BanksClient, params: AddLiquidityParams) {
+  const { owner, pool, position, liquidityDelta, tokenAAmountThreshold, tokenBAmountThreshold } = params
 
-  const program = createCpAmmProgram();
-  const poolState = await getPool(banksClient, pool);
-  const positionState = await getPosition(banksClient, position);
-  const positionNftAccount = derivePositionNftAccount(positionState.nftMint);
+  const program = createCpAmmProgram()
+  const poolState = await getPool(banksClient, pool)
+  const positionState = await getPosition(banksClient, position)
+  const positionNftAccount = derivePositionNftAccount(positionState.nftMint)
 
-  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint))
-    .owner;
-  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint))
-    .owner;
+  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint)).owner
+  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint)).owner
 
-  const tokenAAccount = getAssociatedTokenAddressSync(
-    poolState.tokenAMint,
-    owner.publicKey,
-    true,
-    tokenAProgram
-  );
-  const tokenBAccount = getAssociatedTokenAddressSync(
-    poolState.tokenBMint,
-    owner.publicKey,
-    true,
-    tokenBProgram
-  );
-  const tokenAVault = poolState.tokenAVault;
-  const tokenBVault = poolState.tokenBVault;
-  const tokenAMint = poolState.tokenAMint;
-  const tokenBMint = poolState.tokenBMint;
+  const tokenAAccount = getAssociatedTokenAddressSync(poolState.tokenAMint, owner.publicKey, true, tokenAProgram)
+  const tokenBAccount = getAssociatedTokenAddressSync(poolState.tokenBMint, owner.publicKey, true, tokenBProgram)
+  const tokenAVault = poolState.tokenAVault
+  const tokenBVault = poolState.tokenBVault
+  const tokenAMint = poolState.tokenAMint
+  const tokenBMint = poolState.tokenBMint
+
+  // Hook-related accounts for token-2022 transfer hook
+  const [tokenAExtraAccountMetaList] = PublicKey.findProgramAddressSync(
+    [Buffer.from('extra-account-metas'), tokenAMint.toBuffer()],
+    TRANSFER_HOOK_PROGRAM_ID,
+  )
+  const [tokenBExtraAccountMetaList] = PublicKey.findProgramAddressSync(
+    [Buffer.from('extra-account-metas'), tokenBMint.toBuffer()],
+    TRANSFER_HOOK_PROGRAM_ID,
+  )
+  const [userKycPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from('user-kyc'), owner.publicKey.toBuffer()],
+    TRANSFER_HOOK_PROGRAM_ID,
+  )
 
   const transaction = await program.methods
     .addLiquidity({
@@ -1420,56 +1280,46 @@ export async function addLiquidity(
       tokenAMint,
       tokenBMint,
     })
-    .transaction();
+    .remainingAccounts([
+      { pubkey: tokenAExtraAccountMetaList, isSigner: false, isWritable: false },
+      { pubkey: tokenBExtraAccountMetaList, isSigner: false, isWritable: false },
+      { pubkey: userKycPda, isSigner: false, isWritable: false },
+      { pubkey: TRANSFER_HOOK_PROGRAM_ID, isSigner: false, isWritable: false },
+    ])
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(owner);
+  // add more compute budget for hook-aware addLiquidity
+  transaction.add(
+    ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 }),
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1 }),
+  )
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(owner)
+
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
-export type RemoveLiquidityParams = AddLiquidityParams;
+export type RemoveLiquidityParams = AddLiquidityParams
 
-export async function removeLiquidity(
-  banksClient: BanksClient,
-  params: RemoveLiquidityParams
-) {
-  const {
-    owner,
-    pool,
-    position,
-    liquidityDelta,
-    tokenAAmountThreshold,
-    tokenBAmountThreshold,
-  } = params;
+export async function removeLiquidity(banksClient: BanksClient, params: RemoveLiquidityParams) {
+  const { owner, pool, position, liquidityDelta, tokenAAmountThreshold, tokenBAmountThreshold } = params
 
-  const program = createCpAmmProgram();
-  const poolState = await getPool(banksClient, pool);
-  const positionState = await getPosition(banksClient, position);
-  const positionNftAccount = derivePositionNftAccount(positionState.nftMint);
+  const program = createCpAmmProgram()
+  const poolState = await getPool(banksClient, pool)
+  const positionState = await getPosition(banksClient, position)
+  const positionNftAccount = derivePositionNftAccount(positionState.nftMint)
 
-  const poolAuthority = derivePoolAuthority();
-  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint))
-    .owner;
-  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint))
-    .owner;
+  const poolAuthority = derivePoolAuthority()
+  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint)).owner
+  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint)).owner
 
-  const tokenAAccount = getAssociatedTokenAddressSync(
-    poolState.tokenAMint,
-    owner.publicKey,
-    true,
-    tokenAProgram
-  );
-  const tokenBAccount = getAssociatedTokenAddressSync(
-    poolState.tokenBMint,
-    owner.publicKey,
-    true,
-    tokenBProgram
-  );
-  const tokenAVault = poolState.tokenAVault;
-  const tokenBVault = poolState.tokenBVault;
-  const tokenAMint = poolState.tokenAMint;
-  const tokenBMint = poolState.tokenBMint;
+  const tokenAAccount = getAssociatedTokenAddressSync(poolState.tokenAMint, owner.publicKey, true, tokenAProgram)
+  const tokenBAccount = getAssociatedTokenAddressSync(poolState.tokenBMint, owner.publicKey, true, tokenBProgram)
+  const tokenAVault = poolState.tokenAVault
+  const tokenBVault = poolState.tokenBVault
+  const tokenAMint = poolState.tokenAMint
+  const tokenBMint = poolState.tokenBMint
 
   const transaction = await program.methods
     .removeLiquidity({
@@ -1492,61 +1342,40 @@ export async function removeLiquidity(
       tokenAMint,
       tokenBMint,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(owner);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(owner)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export type RemoveAllLiquidityParams = {
-  owner: Keypair;
-  pool: PublicKey;
-  position: PublicKey;
-  tokenAAmountThreshold: BN;
-  tokenBAmountThreshold: BN;
-};
+  owner: Keypair
+  pool: PublicKey
+  position: PublicKey
+  tokenAAmountThreshold: BN
+  tokenBAmountThreshold: BN
+}
 
-export async function removeAllLiquidity(
-  banksClient: BanksClient,
-  params: RemoveAllLiquidityParams
-) {
-  const {
-    owner,
-    pool,
-    position,
-    tokenAAmountThreshold,
-    tokenBAmountThreshold,
-  } = params;
+export async function removeAllLiquidity(banksClient: BanksClient, params: RemoveAllLiquidityParams) {
+  const { owner, pool, position, tokenAAmountThreshold, tokenBAmountThreshold } = params
 
-  const program = createCpAmmProgram();
-  const poolState = await getPool(banksClient, pool);
-  const positionState = await getPosition(banksClient, position);
-  const positionNftAccount = derivePositionNftAccount(positionState.nftMint);
+  const program = createCpAmmProgram()
+  const poolState = await getPool(banksClient, pool)
+  const positionState = await getPosition(banksClient, position)
+  const positionNftAccount = derivePositionNftAccount(positionState.nftMint)
 
-  const poolAuthority = derivePoolAuthority();
-  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint))
-    .owner;
-  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint))
-    .owner;
+  const poolAuthority = derivePoolAuthority()
+  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint)).owner
+  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint)).owner
 
-  const tokenAAccount = getAssociatedTokenAddressSync(
-    poolState.tokenAMint,
-    owner.publicKey,
-    true,
-    tokenAProgram
-  );
-  const tokenBAccount = getAssociatedTokenAddressSync(
-    poolState.tokenBMint,
-    owner.publicKey,
-    true,
-    tokenBProgram
-  );
-  const tokenAVault = poolState.tokenAVault;
-  const tokenBVault = poolState.tokenBVault;
-  const tokenAMint = poolState.tokenAMint;
-  const tokenBMint = poolState.tokenBMint;
+  const tokenAAccount = getAssociatedTokenAddressSync(poolState.tokenAMint, owner.publicKey, true, tokenAProgram)
+  const tokenBAccount = getAssociatedTokenAddressSync(poolState.tokenBMint, owner.publicKey, true, tokenBProgram)
+  const tokenAVault = poolState.tokenAVault
+  const tokenBVault = poolState.tokenBVault
+  const tokenAMint = poolState.tokenAMint
+  const tokenBMint = poolState.tokenBMint
 
   const transaction = await program.methods
     .removeAllLiquidity(tokenAAmountThreshold, tokenBAmountThreshold)
@@ -1565,27 +1394,27 @@ export async function removeAllLiquidity(
       tokenAMint,
       tokenBMint,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(owner);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(owner)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export async function closePosition(
   banksClient: BanksClient,
   params: {
-    owner: Keypair;
-    pool: PublicKey;
-    position: PublicKey;
-  }
+    owner: Keypair
+    pool: PublicKey
+    position: PublicKey
+  },
 ) {
-  const { owner, pool, position } = params;
-  const program = createCpAmmProgram();
-  const positionState = await getPosition(banksClient, position);
-  const poolAuthority = derivePoolAuthority();
-  const positionNftAccount = derivePositionNftAccount(positionState.nftMint);
+  const { owner, pool, position } = params
+  const program = createCpAmmProgram()
+  const positionState = await getPosition(banksClient, position)
+  const poolAuthority = derivePoolAuthority()
+  const positionNftAccount = derivePositionNftAccount(positionState.nftMint)
 
   const transaction = await program.methods
     .closePosition()
@@ -1598,60 +1427,59 @@ export async function closePosition(
       rentReceiver: owner.publicKey,
       owner: owner.publicKey,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(owner);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(owner)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export type SwapParams = {
-  payer: Keypair;
-  pool: PublicKey;
-  inputTokenMint: PublicKey;
-  outputTokenMint: PublicKey;
-  amountIn: BN;
-  minimumAmountOut: BN;
-  referralTokenAccount: PublicKey | null;
-};
+  payer: Keypair
+  pool: PublicKey
+  inputTokenMint: PublicKey
+  outputTokenMint: PublicKey
+  amountIn: BN
+  minimumAmountOut: BN
+  referralTokenAccount: PublicKey | null
+  hookRegistry?: PublicKey
+}
 
 export async function swap(banksClient: BanksClient, params: SwapParams) {
-  const {
-    payer,
-    pool,
-    inputTokenMint,
-    outputTokenMint,
-    amountIn,
-    minimumAmountOut,
-    referralTokenAccount,
-  } = params;
+  const { payer, pool, inputTokenMint, outputTokenMint, amountIn, minimumAmountOut, referralTokenAccount } = params
 
-  const program = createCpAmmProgram();
-  const poolState = await getPool(banksClient, pool);
+  const program = createCpAmmProgram()
+  const poolState = await getPool(banksClient, pool)
 
-  const poolAuthority = derivePoolAuthority();
-  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint))
-    .owner;
+  const poolAuthority = derivePoolAuthority()
+  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint)).owner
 
-  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint))
-    .owner;
-  const inputTokenAccount = getAssociatedTokenAddressSync(
-    inputTokenMint,
-    payer.publicKey,
-    true,
-    tokenAProgram
-  );
-  const outputTokenAccount = getAssociatedTokenAddressSync(
-    outputTokenMint,
-    payer.publicKey,
-    true,
-    tokenBProgram
-  );
-  const tokenAVault = poolState.tokenAVault;
-  const tokenBVault = poolState.tokenBVault;
-  const tokenAMint = poolState.tokenAMint;
-  const tokenBMint = poolState.tokenBMint;
+  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint)).owner
+  const inputTokenAccount = getAssociatedTokenAddressSync(inputTokenMint, payer.publicKey, true, tokenAProgram)
+  const outputTokenAccount = getAssociatedTokenAddressSync(outputTokenMint, payer.publicKey, true, tokenBProgram)
+  const tokenAVault = poolState.tokenAVault
+  const tokenBVault = poolState.tokenBVault
+  const tokenAMint = poolState.tokenAMint
+  const tokenBMint = poolState.tokenBMint
+
+  // Hook-related remaining accounts for transfer hook
+  const [inputExtraAccountMetaList] = PublicKey.findProgramAddressSync(
+    [Buffer.from('extra-account-metas'), inputTokenMint.toBuffer()],
+    TRANSFER_HOOK_PROGRAM_ID,
+  )
+  const [outputExtraAccountMetaList] = PublicKey.findProgramAddressSync(
+    [Buffer.from('extra-account-metas'), outputTokenMint.toBuffer()],
+    TRANSFER_HOOK_PROGRAM_ID,
+  )
+  const [userKycPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from('user-kyc'), payer.publicKey.toBuffer()],
+    TRANSFER_HOOK_PROGRAM_ID,
+  )
+  const [poolAuthorityKycPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from('user-kyc'), poolAuthority.toBuffer()],
+    TRANSFER_HOOK_PROGRAM_ID,
+  )
 
   const transaction = await program.methods
     .swap({
@@ -1671,54 +1499,53 @@ export async function swap(banksClient: BanksClient, params: SwapParams) {
       tokenAMint,
       tokenBMint,
       referralTokenAccount,
+      hookRegistry: params.hookRegistry || null,
     })
-    .transaction();
+    .remainingAccounts([
+      { pubkey: inputExtraAccountMetaList, isSigner: false, isWritable: false },
+      { pubkey: outputExtraAccountMetaList, isSigner: false, isWritable: false },
+      { pubkey: userKycPda, isSigner: false, isWritable: false },
+      { pubkey: poolAuthorityKycPda, isSigner: false, isWritable: false },
+      { pubkey: TRANSFER_HOOK_PROGRAM_ID, isSigner: false, isWritable: false },
+    ])
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(payer);
+  // bump compute for double hook path
+  transaction.add(
+    ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 }),
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1 }),
+  )
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(payer)
+
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export type ClaimpositionFeeParams = {
-  owner: Keypair;
-  pool: PublicKey;
-  position: PublicKey;
-};
+  owner: Keypair
+  pool: PublicKey
+  position: PublicKey
+}
 
-export async function claimPositionFee(
-  banksClient: BanksClient,
-  params: ClaimpositionFeeParams
-) {
-  const { owner, pool, position } = params;
+export async function claimPositionFee(banksClient: BanksClient, params: ClaimpositionFeeParams) {
+  const { owner, pool, position } = params
 
-  const program = createCpAmmProgram();
-  const poolState = await getPool(banksClient, pool);
-  const positionState = await getPosition(banksClient, position);
-  const positionNftAccount = derivePositionNftAccount(positionState.nftMint);
+  const program = createCpAmmProgram()
+  const poolState = await getPool(banksClient, pool)
+  const positionState = await getPosition(banksClient, position)
+  const positionNftAccount = derivePositionNftAccount(positionState.nftMint)
 
-  const poolAuthority = derivePoolAuthority();
-  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint))
-    .owner;
-  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint))
-    .owner;
+  const poolAuthority = derivePoolAuthority()
+  const tokenAProgram = (await banksClient.getAccount(poolState.tokenAMint)).owner
+  const tokenBProgram = (await banksClient.getAccount(poolState.tokenBMint)).owner
 
-  const tokenAAccount = getAssociatedTokenAddressSync(
-    poolState.tokenAMint,
-    owner.publicKey,
-    true,
-    tokenAProgram
-  );
-  const tokenBAccount = getAssociatedTokenAddressSync(
-    poolState.tokenBMint,
-    owner.publicKey,
-    true,
-    tokenBProgram
-  );
-  const tokenAVault = poolState.tokenAVault;
-  const tokenBVault = poolState.tokenBVault;
-  const tokenAMint = poolState.tokenAMint;
-  const tokenBMint = poolState.tokenBMint;
+  const tokenAAccount = getAssociatedTokenAddressSync(poolState.tokenAMint, owner.publicKey, true, tokenAProgram)
+  const tokenBAccount = getAssociatedTokenAddressSync(poolState.tokenBMint, owner.publicKey, true, tokenBProgram)
+  const tokenAVault = poolState.tokenAVault
+  const tokenBVault = poolState.tokenBVault
+  const tokenAMint = poolState.tokenAMint
+  const tokenBMint = poolState.tokenBMint
 
   const transaction = await program.methods
     .claimPositionFee()
@@ -1737,33 +1564,30 @@ export async function claimPositionFee(
       tokenAMint,
       tokenBMint,
     })
-    .transaction();
+    .transaction()
 
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(owner);
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(owner)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
 export type SplitPositionParams = {
-  firstPositionOwner: Keypair;
-  secondPositionOwner: Keypair;
-  pool: PublicKey;
-  firstPosition: PublicKey;
-  firstPositionNftAccount: PublicKey;
-  secondPosition: PublicKey;
-  secondPositionNftAccount: PublicKey;
-  permanentLockedLiquidityPercentage: number;
-  unlockedLiquidityPercentage: number;
-  feeAPercentage: number;
-  feeBPercentage: number;
-  reward0Percentage: number;
-  reward1Percentage: number;
-};
-export async function splitPosition(
-  banksClient: BanksClient,
-  params: SplitPositionParams
-) {
+  firstPositionOwner: Keypair
+  secondPositionOwner: Keypair
+  pool: PublicKey
+  firstPosition: PublicKey
+  firstPositionNftAccount: PublicKey
+  secondPosition: PublicKey
+  secondPositionNftAccount: PublicKey
+  permanentLockedLiquidityPercentage: number
+  unlockedLiquidityPercentage: number
+  feeAPercentage: number
+  feeBPercentage: number
+  reward0Percentage: number
+  reward1Percentage: number
+}
+export async function splitPosition(banksClient: BanksClient, params: SplitPositionParams) {
   const {
     pool,
     firstPositionOwner,
@@ -1778,9 +1602,9 @@ export async function splitPosition(
     feeBPercentage,
     reward0Percentage,
     reward1Percentage,
-  } = params;
-  const program = createCpAmmProgram();
-  const poolAuthority = derivePoolAuthority();
+  } = params
+  const program = createCpAmmProgram()
+  const poolAuthority = derivePoolAuthority()
   const transaction = await program.methods
     .splitPosition({
       permanentLockedLiquidityPercentage,
@@ -1800,68 +1624,116 @@ export async function splitPosition(
       firstOwner: firstPositionOwner.publicKey,
       secondOwner: secondPositionOwner.publicKey,
     })
-    .transaction();
-  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0];
-  transaction.sign(firstPositionOwner, secondPositionOwner);
+    .transaction()
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(firstPositionOwner, secondPositionOwner)
 
-  await processTransactionMaybeThrow(banksClient, transaction);
+  await processTransactionMaybeThrow(banksClient, transaction)
 }
 
-export async function getPool(
-  banksClient: BanksClient,
-  pool: PublicKey
-): Promise<Pool> {
-  const program = createCpAmmProgram();
-  const account = await banksClient.getAccount(pool);
-  return program.coder.accounts.decode("pool", Buffer.from(account.data));
+export async function getPool(banksClient: BanksClient, pool: PublicKey): Promise<Pool> {
+  const program = createCpAmmProgram()
+  const account = await banksClient.getAccount(pool)
+  return program.coder.accounts.decode('pool', Buffer.from(account.data))
 }
 
-export async function getPosition(
-  banksClient: BanksClient,
-  position: PublicKey
-): Promise<Position> {
-  const program = createCpAmmProgram();
-  const account = await banksClient.getAccount(position);
-  return program.coder.accounts.decode("position", Buffer.from(account.data));
+export async function getPosition(banksClient: BanksClient, position: PublicKey): Promise<Position> {
+  const program = createCpAmmProgram()
+  const account = await banksClient.getAccount(position)
+  return program.coder.accounts.decode('position', Buffer.from(account.data))
 }
 
-export async function getVesting(
-  banksClient: BanksClient,
-  vesting: PublicKey
-): Promise<Vesting> {
-  const program = createCpAmmProgram();
-  const account = await banksClient.getAccount(vesting);
-  return program.coder.accounts.decode("vesting", Buffer.from(account.data));
+export async function getVesting(banksClient: BanksClient, vesting: PublicKey): Promise<Vesting> {
+  const program = createCpAmmProgram()
+  const account = await banksClient.getAccount(vesting)
+  return program.coder.accounts.decode('vesting', Buffer.from(account.data))
 }
 
-export async function getConfig(
-  banksClient: BanksClient,
-  config: PublicKey
-): Promise<Config> {
-  const program = createCpAmmProgram();
-  const account = await banksClient.getAccount(config);
-  return program.coder.accounts.decode("config", Buffer.from(account.data));
+export async function getConfig(banksClient: BanksClient, config: PublicKey): Promise<Config> {
+  const program = createCpAmmProgram()
+  const account = await banksClient.getAccount(config)
+  return program.coder.accounts.decode('config', Buffer.from(account.data))
 }
 
 export function getCpAmmProgramErrorCodeHexString(errorMessage: String) {
   const error = CpAmmIDL.errors.find(
-    (e) =>
-      e.name.toLowerCase() === errorMessage.toLowerCase() ||
-      e.msg.toLowerCase() === errorMessage.toLowerCase()
-  );
+    (e) => e.name.toLowerCase() === errorMessage.toLowerCase() || e.msg.toLowerCase() === errorMessage.toLowerCase(),
+  )
 
   if (!error) {
-    throw new Error(`Unknown CP AMM error message / name: ${errorMessage}`);
+    throw new Error(`Unknown CP AMM error message / name: ${errorMessage}`)
   }
 
-  return "0x" + error.code.toString(16);
+  return '0x' + error.code.toString(16)
 }
 
-export async function getTokenBadge(
+export async function getTokenBadge(banksClient: BanksClient, tokenBadge: PublicKey): Promise<TokenBadge> {
+  const program = createCpAmmProgram()
+  const account = await banksClient.getAccount(tokenBadge)
+  return program.coder.accounts.decode('tokenBadge', Buffer.from(account.data))
+}
+
+export async function createHookRegistry(banksClient: BanksClient, authority: Keypair): Promise<PublicKey> {
+  const program = createCpAmmProgram()
+  const [hookRegistry] = PublicKey.findProgramAddressSync([Buffer.from('hook-registry')], program.programId)
+
+  const transaction = await program.methods
+    .createHookRegistry()
+    .accountsPartial({
+      payer: authority.publicKey,
+      authority: authority.publicKey,
+      hookRegistry,
+      systemProgram: SystemProgram.programId,
+    })
+    .transaction()
+
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(authority)
+
+  await processTransactionMaybeThrow(banksClient, transaction)
+  return hookRegistry
+}
+
+export async function addHookProgram(
   banksClient: BanksClient,
-  tokenBadge: PublicKey
-): Promise<TokenBadge> {
-  const program = createCpAmmProgram();
-  const account = await banksClient.getAccount(tokenBadge);
-  return program.coder.accounts.decode("tokenBadge", Buffer.from(account.data));
+  hookRegistry: PublicKey,
+  authority: Keypair,
+  programId: PublicKey,
+): Promise<void> {
+  const program = createCpAmmProgram()
+
+  const transaction = await program.methods
+    .addHookProgram(programId)
+    .accountsPartial({
+      authority: authority.publicKey,
+      hookRegistry,
+    })
+    .transaction()
+
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(authority)
+
+  await processTransactionMaybeThrow(banksClient, transaction)
+}
+
+export async function removeHookProgram(
+  banksClient: BanksClient,
+  hookRegistry: PublicKey,
+  authority: Keypair,
+  programId: PublicKey,
+): Promise<void> {
+  const program = createCpAmmProgram()
+
+  const transaction = await program.methods
+    .removeHookProgram(programId)
+    .accountsPartial({
+      authority: authority.publicKey,
+      hookRegistry,
+    })
+    .transaction()
+
+  transaction.recentBlockhash = (await banksClient.getLatestBlockhash())[0]
+  transaction.sign(authority)
+
+  await processTransactionMaybeThrow(banksClient, transaction)
 }

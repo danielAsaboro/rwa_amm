@@ -7,6 +7,7 @@ import {
   createInitializeMetadataPointerInstruction,
   createMintToInstruction,
   createInitializePermanentDelegateInstruction,
+  createInitializeTransferHookInstruction,
 } from "@solana/spl-token";
 import {
   Keypair,
@@ -98,6 +99,34 @@ export async function createToken2022(
   await banksClient.processTransaction(transaction);
 
   return mintKeypair.publicKey;
+}
+
+export function createTransferHookExtensionWithInstruction(
+  mint: PublicKey,
+  hookProgram: PublicKey
+): ExtensionWithInstruction {
+  return {
+    extension: ExtensionType.TransferHook,
+    instruction: createInitializeTransferHookInstruction(
+      mint,
+      hookProgram,
+      hookProgram,
+      TOKEN_2022_PROGRAM_ID
+    ),
+  };
+}
+
+export async function createToken2022WithTransferHook(
+  banksClient: BanksClient,
+  payer: Keypair,
+  hookProgram: PublicKey,
+  mintKeypair: Keypair
+): Promise<PublicKey> {
+  const extensions = [
+    createTransferHookExtensionWithInstruction(mintKeypair.publicKey, hookProgram),
+  ];
+  
+  return createToken2022(banksClient, payer, extensions, mintKeypair);
 }
 
 export async function mintToToken2022(

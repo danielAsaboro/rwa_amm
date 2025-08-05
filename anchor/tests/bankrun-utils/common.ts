@@ -1,21 +1,15 @@
-import {
-  Keypair,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  SystemProgram,
-  Transaction,
-} from "@solana/web3.js";
-import { BanksClient, ProgramTestContext, startAnchor } from "solana-bankrun";
-import { CP_AMM_PROGRAM_ID } from "./constants";
-import BN from "bn.js";
+import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js'
+import { BanksClient, ProgramTestContext, startAnchor } from 'solana-bankrun'
+import { CP_AMM_PROGRAM_ID } from './constants'
+import BN from 'bn.js'
 
 export async function startTest(root: Keypair) {
   // Program name need to match fixtures program name
   return startAnchor(
-    "./",
+    './',
     [
       {
-        name: "cp_amm",
+        name: 'cp_amm',
         programId: new PublicKey(CP_AMM_PROGRAM_ID),
       },
     ],
@@ -29,74 +23,53 @@ export async function startTest(root: Keypair) {
           data: new Uint8Array(),
         },
       },
-    ]
-  );
+    ],
+  )
 }
 
-export async function transferSol(
-  banksClient: BanksClient,
-  from: Keypair,
-  to: PublicKey,
-  amount: BN
-) {
+export async function transferSol(banksClient: BanksClient, from: Keypair, to: PublicKey, amount: BN) {
   const systemTransferIx = SystemProgram.transfer({
     fromPubkey: from.publicKey,
     toPubkey: to,
     lamports: BigInt(amount.toString()),
-  });
+  })
 
-  let transaction = new Transaction();
-  const [recentBlockhash] = await banksClient.getLatestBlockhash();
-  transaction.recentBlockhash = recentBlockhash;
-  transaction.add(systemTransferIx);
-  transaction.sign(from);
+  let transaction = new Transaction()
+  const [recentBlockhash] = await banksClient.getLatestBlockhash()
+  transaction.recentBlockhash = recentBlockhash
+  transaction.add(systemTransferIx)
+  transaction.sign(from)
 
-  await banksClient.processTransaction(transaction);
+  await banksClient.processTransaction(transaction)
 }
 
-export async function processTransactionMaybeThrow(
-  banksClient: BanksClient,
-  transaction: Transaction
-) {
-  const transactionMeta = await banksClient.tryProcessTransaction(transaction);
+export async function processTransactionMaybeThrow(banksClient: BanksClient, transaction: Transaction) {
+  const transactionMeta = await banksClient.tryProcessTransaction(transaction)
   if (transactionMeta.result && transactionMeta.result.length > 0) {
-    throw Error(transactionMeta.result);
+    throw Error(transactionMeta.result)
   }
 }
 
-export async function expectThrowsAsync(
-  fn: () => Promise<void>,
-  errorMessage: String
-) {
+export async function expectThrowsAsync(fn: () => Promise<void>, errorMessage: String) {
   try {
-    await fn();
+    await fn()
   } catch (err) {
     if (!(err instanceof Error)) {
-      throw err;
+      throw err
     } else {
       if (!err.message.toLowerCase().includes(errorMessage.toLowerCase())) {
-        throw new Error(
-          `Unexpected error: ${err.message}. Expected error: ${errorMessage}`
-        );
+        throw new Error(`Unexpected error: ${err.message}. Expected error: ${errorMessage}`)
       }
-      return;
+      return
     }
   }
-  throw new Error("Expected an error but didn't get one");
+  throw new Error("Expected an error but didn't get one")
 }
 
-export async function generateKpAndFund(
-  banksClient: BanksClient,
-  rootKeypair: Keypair
-): Promise<Keypair> {
-  const kp = Keypair.generate();
-  await transferSol(
-    banksClient,
-    rootKeypair,
-    kp.publicKey,
-    new BN(LAMPORTS_PER_SOL)
-  );
-  return kp;
+export async function generateKpAndFund(banksClient: BanksClient, rootKeypair: Keypair): Promise<Keypair> {
+  const kp = Keypair.generate()
+  await transferSol(banksClient, rootKeypair, kp.publicKey, new BN(LAMPORTS_PER_SOL))
+  return kp
 }
 
 // async function createAndFundToken2022(
@@ -283,10 +256,10 @@ export async function generateKpAndFund(
 // }
 
 export function randomID(min = 0, max = 10000) {
-  return Math.floor(Math.random() * (max - min) + min);
+  return Math.floor(Math.random() * (max - min) + min)
 }
 
 export async function warpSlotBy(context: ProgramTestContext, slots: BN) {
-  const clock = await context.banksClient.getClock();
-   context.warpToSlot(clock.slot + BigInt(slots.toString()));
+  const clock = await context.banksClient.getClock()
+  context.warpToSlot(clock.slot + BigInt(slots.toString()))
 }
