@@ -46,7 +46,9 @@ next-env.d.ts
 /anchor/target/deploy
 /anchor/target/release
 /anchor/target/sbf-solana-solana/
+/anchor/target/sbf-solana-solana
 /anchor/target/test-ledger
 /anchor/target/.rustc_info.json
 test-ledger
 **/*.rs.bk
+old_readme.md
