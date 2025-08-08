@@ -2,12 +2,13 @@
 
 # 📽️ Demo
 
+[See all passing Tests](https://github.com/user-attachments/assets/f31e956a-a69f-41b4-a746-1630b8ca1b28)
+
 [Watch the full walkthrough »](https://github.com/user-attachments/assets/7a946a2e-6154-48b5-a651-f62ee8c0b52f)
 
 - **Live site for testing:** <https://rwa-amm-2wup.vercel.app/>
 
 > Prefer video? Skip straight to the 3-minute demo above.
-
 
 ## The Problem: Why AMMs Can't Handle Token-2022 Transfer Hooks
 
@@ -45,11 +46,11 @@ Transfer hooks are programs that get called **automatically** during every token
 pub mod kyc_hook {
     pub fn transfer_hook(ctx: Context<TransferHook>, amount: u64) -> Result<()> {
         let recipient = ctx.accounts.destination_token_account.owner;
-        
+
         // Check if recipient is KYC verified
         let kyc_account = &ctx.accounts.kyc_registry;
         require!(kyc_account.is_verified(&recipient), KycError::UserNotVerified);
-        
+
         // Transfer allowed
         Ok(())
     }
@@ -385,11 +386,11 @@ The problem: **Reentrancy attacks**. Here's what happened:
 // Our naive first attempt (VULNERABLE TO REENTRANCY)
 pub fn handle_swap(ctx: Context<SwapCtx>, params: SwapParameters) -> Result<()> {
     let pool = &mut ctx.accounts.pool;
-    
+
     // Update pool state FIRST (mistake!)
     pool.update_price(new_price);
     pool.update_reserves(new_reserve_a, new_reserve_b);
-    
+
     // Then do transfers with hooks
     transfer_from_user_with_hooks(
         &ctx.accounts.user,
@@ -400,13 +401,14 @@ pub fn handle_swap(ctx: Context<SwapCtx>, params: SwapParameters) -> Result<()> 
         amount_in,
         ctx.remaining_accounts
     )?; // ← HOOK EXECUTES HERE
-    
+
     // Transfer to user
     transfer_to_user_with_hooks(...)?; // ← ANOTHER HOOK HERE
 }
 ```
 
 **The Attack Vector:**
+
 1. User initiates swap with malicious hook token
 2. Pool state gets updated (price, reserves changed)
 3. Hook executes during first transfer
@@ -419,6 +421,7 @@ We lost weeks debugging this. The solution: **separate the hook logic completely
 ### Our Solution: Separate Transfer Hook Program
 
 We created a dedicated transfer hook program (`anchor/programs/transfer-hook/`) that:
+
 - Has no access to pool state
 - Can only validate transfers, not manipulate AMM
 - Gets called by Token-2022 program, not our AMM
@@ -431,6 +434,7 @@ We created a dedicated transfer hook program (`anchor/programs/transfer-hook/`) 
 **Here's what makes this insanely complex:**
 
 Solana requires **ALL accounts** to be specified in every transaction. You can't discover accounts during execution. But transfer hooks need different accounts depending on:
+
 - Which hook program is running
 - What the hook is validating (KYC registry, volume limits, etc.)
 - Dynamic state (user's verification status, current volume usage)
@@ -456,6 +460,7 @@ pub struct ExtraAccountMeta {
 ```
 
 **The frontend has to:**
+
 1. **Read the hook program ID** from the Token-2022 mint
 2. **Find the ExtraAccountMetaList PDA** for that hook program
 3. **Parse the ExtraAccountMetaList** to understand what accounts are needed
@@ -472,73 +477,73 @@ async function resolveHookAccounts(
   source: PublicKey,
   destination: PublicKey,
   authority: PublicKey,
-  amount: bigint
+  amount: bigint,
 ): Promise<AccountMeta[]> {
   // 1. Get the mint and check for transfer hook
-  const mintInfo = await getMint(connection, mint);
-  const transferHookConfig = getTransferHookConfig(mintInfo);
-  
+  const mintInfo = await getMint(connection, mint)
+  const transferHookConfig = getTransferHookConfig(mintInfo)
+
   if (!transferHookConfig?.programId) {
-    return []; // No hook, no extra accounts needed
+    return [] // No hook, no extra accounts needed
   }
 
   // 2. Find the ExtraAccountMetaList PDA
   const [extraAccountMetaListPDA] = PublicKey.findProgramAddressSync(
-    [Buffer.from("extra-account-metas"), mint.toBuffer()],
-    transferHookConfig.programId
-  );
+    [Buffer.from('extra-account-metas'), mint.toBuffer()],
+    transferHookConfig.programId,
+  )
 
   // 3. Fetch and parse the ExtraAccountMetaList
-  const extraAccountMetaListInfo = await connection.getAccountInfo(extraAccountMetaListPDA);
-  const extraAccountMetaList = ExtraAccountMetaList.fromBuffer(extraAccountMetaListInfo.data);
+  const extraAccountMetaListInfo = await connection.getAccountInfo(extraAccountMetaListPDA)
+  const extraAccountMetaList = ExtraAccountMetaList.fromBuffer(extraAccountMetaListInfo.data)
 
   // 4. Resolve each extra account based on its config
-  const resolvedAccounts: AccountMeta[] = [];
+  const resolvedAccounts: AccountMeta[] = []
   for (const extraAccountMeta of extraAccountMetaList.extraAccounts) {
-    let resolvedPubkey: PublicKey;
-    
+    let resolvedPubkey: PublicKey
+
     switch (extraAccountMeta.discriminator) {
       case 0: // Literal address
-        resolvedPubkey = new PublicKey(extraAccountMeta.addressConfig);
-        break;
+        resolvedPubkey = new PublicKey(extraAccountMeta.addressConfig)
+        break
       case 1: // PDA based on mint
-        [resolvedPubkey] = PublicKey.findProgramAddressSync(
+        ;[resolvedPubkey] = PublicKey.findProgramAddressSync(
           [mint.toBuffer(), Buffer.from(extraAccountMeta.addressConfig)],
-          transferHookConfig.programId
-        );
-        break;
+          transferHookConfig.programId,
+        )
+        break
       case 2: // PDA based on source account owner
-        const sourceAccountInfo = await getAccount(connection, source);
-        [resolvedPubkey] = PublicKey.findProgramAddressSync(
+        const sourceAccountInfo = await getAccount(connection, source)
+        ;[resolvedPubkey] = PublicKey.findProgramAddressSync(
           [sourceAccountInfo.owner.toBuffer(), Buffer.from(extraAccountMeta.addressConfig)],
-          transferHookConfig.programId
-        );
-        break;
+          transferHookConfig.programId,
+        )
+        break
       case 3: // PDA based on destination account owner
-        const destAccountInfo = await getAccount(connection, destination);
-        [resolvedPubkey] = PublicKey.findProgramAddressSync(
+        const destAccountInfo = await getAccount(connection, destination)
+        ;[resolvedPubkey] = PublicKey.findProgramAddressSync(
           [destAccountInfo.owner.toBuffer(), Buffer.from(extraAccountMeta.addressConfig)],
-          transferHookConfig.programId
-        );
-        break;
+          transferHookConfig.programId,
+        )
+        break
       // ... more discriminator cases
     }
-    
+
     resolvedAccounts.push({
       pubkey: resolvedPubkey,
       isSigner: extraAccountMeta.is_signer,
       isWritable: extraAccountMeta.is_writable,
-    });
+    })
   }
-  
-  return resolvedAccounts;
+
+  return resolvedAccounts
 }
 ```
 
 **Why This Is Hell:**
 
 1. **Multiple network calls** - Fetch mint info, ExtraAccountMetaList, token account info
-2. **Complex parsing** - Each hook uses different discriminator patterns  
+2. **Complex parsing** - Each hook uses different discriminator patterns
 3. **Dynamic resolution** - Account addresses depend on runtime state
 4. **Two-sided resolution** - Input AND output tokens might have different hooks
 5. **Failure prone** - If any account resolution fails, entire swap fails
@@ -547,7 +552,7 @@ async function resolveHookAccounts(
 **How We Solved It:**
 
 - **spl-transfer-hook-interface** - Used Solana's official helper library
-- **Account prefetching** - Frontend resolves all accounts before transaction submission  
+- **Account prefetching** - Frontend resolves all accounts before transaction submission
 - **Caching** - Cache ExtraAccountMetaList data to avoid repeated fetches
 - **Error handling** - Graceful fallbacks when account resolution fails
 - **Transaction size management** - Use lookup tables when too many accounts
@@ -563,8 +568,8 @@ const inputTokenHookAccounts = await resolveExtraTransferCheckedAccounts(
   userInputTokenAccount,
   poolInputTokenAccount,
   userKeypair.publicKey,
-  amount
-);
+  amount,
+)
 ```
 
 **The result:** What should be a simple swap becomes a complex account resolution nightmare involving multiple programs, PDAs, and dynamic state.
@@ -590,19 +595,20 @@ if e.to_string().contains("insufficient compute units") {
 **The Issue**: If a hook fails after AMM state changes, the pool could be left inconsistent.
 
 **What Was Happening**:
+
 ```rust
 // WRONG ORDER (could leave pool inconsistent)
 pub fn handle_swap(ctx: Context<SwapCtx>, params: SwapParameters) -> Result<()> {
     let pool = &mut ctx.accounts.pool;
-    
+
     // 1. Update pool state first
     pool.current_price = calculate_new_price(amount_in, amount_out);
     pool.liquidity = new_liquidity_amount;
-    
+
     // 2. Then do transfers (hooks can fail here!)
     transfer_from_user_with_hooks(...)?; // ← If this fails, pool state is wrong!
     transfer_to_user_with_hooks(...)?;   // ← Or this fails, pool state is wrong!
-    
+
     Ok(())
 }
 ```
@@ -610,25 +616,26 @@ pub fn handle_swap(ctx: Context<SwapCtx>, params: SwapParameters) -> Result<()> 
 If a hook failed, the pool would have updated state but failed transfers. The pool would be in an invalid state.
 
 **How We Solved It**:
+
 ```rust
 // CORRECT ORDER (validate transfers first)
 pub fn handle_swap(ctx: Context<SwapCtx>, params: SwapParameters) -> Result<()> {
     // 1. Calculate what transfers we need
     let (amount_in, amount_out) = calculate_swap_amounts(params);
-    
+
     // 2. VALIDATE transfers will work (before changing anything)
     validate_transfer_with_hooks(&ctx.accounts.token_in_mint, amount_in, ctx.remaining_accounts)?;
     validate_transfer_with_hooks(&ctx.accounts.token_out_mint, amount_out, ctx.remaining_accounts)?;
-    
+
     // 3. Do actual transfers (we know they'll work)
     transfer_from_user_with_hooks(...)?;
     transfer_to_user_with_hooks(...)?;
-    
+
     // 4. ONLY update pool state after successful transfers
     let pool = &mut ctx.accounts.pool;
     pool.current_price = calculate_new_price(amount_in, amount_out);
     pool.liquidity = new_liquidity_amount;
-    
+
     Ok(())
 }
 ```
@@ -786,13 +793,11 @@ anchor test -- --features local
 ### Create a Hook-Enabled Pool
 
 1. **Create Hook Registry** (Admin only)
+
    ```typescript
    // Create the hook registry PDA
-   const [hookRegistry] = PublicKey.findProgramAddressSync(
-     [Buffer.from("hook_registry")],
-     program.programId
-   );
-   
+   const [hookRegistry] = PublicKey.findProgramAddressSync([Buffer.from('hook_registry')], program.programId)
+
    // Initialize hook registry with admin authority
    await program.methods
      .createHookRegistry()
@@ -802,10 +807,11 @@ anchor test -- --features local
        systemProgram: SystemProgram.programId,
      })
      .signers([adminKeypair])
-     .rpc();
+     .rpc()
    ```
 
 2. **Whitelist Hook Programs** (Admin only)
+
    ```typescript
    // Add approved hook program to whitelist
    await program.methods
@@ -815,10 +821,11 @@ anchor test -- --features local
        authority: adminKeypair.publicKey,
      })
      .signers([adminKeypair])
-     .rpc();
+     .rpc()
    ```
 
 3. **Create Token Badge** for your Token-2022 mint
+
    ```typescript
    // Create badge for hook-enabled token
    await program.methods
@@ -837,10 +844,11 @@ anchor test -- --features local
        systemProgram: SystemProgram.programId,
      })
      .signers([adminKeypair])
-     .rpc();
+     .rpc()
    ```
 
 4. **Initialize Pool** with Token-2022 tokens
+
    ```typescript
    // Create pool - works same as regular tokens
    await program.methods
@@ -851,25 +859,26 @@ anchor test -- --features local
      .accounts({
        pool,
        tokenAMint: token2022MintA, // Hook-enabled token
-       tokenBMint: tokenBMint,     // Regular token or another hook token
+       tokenBMint: tokenBMint, // Regular token or another hook token
        // ... other accounts
      })
      .remainingAccounts([
        tokenBadgeA, // Badge for token A if has hooks
        tokenBadgeB, // Badge for token B if has hooks (optional)
      ])
-     .rpc();
+     .rpc()
    ```
 
 5. **Execute Swaps** - All swaps automatically handle hook execution
+
    ```typescript
    // Frontend resolves hook accounts dynamically
    const inputTokenHookAccounts = await resolveExtraTransferCheckedAccounts(
      connection,
      inputTokenMint,
      // ... other params
-   );
-   
+   )
+
    // Execute swap with hook accounts
    await program.methods
      .swap({
@@ -880,7 +889,7 @@ anchor test -- --features local
        // ... swap accounts
      })
      .remainingAccounts([...inputTokenHookAccounts, ...outputTokenHookAccounts])
-     .rpc();
+     .rpc()
    ```
 
 ### Add Your Hook to Whitelist
@@ -900,13 +909,14 @@ If you have a hook program you want to support:
 ### Why We Separated the Transfer Hook Program
 
 You'll notice we have two programs:
+
 - `anchor/programs/cp-amm/` - Main AMM logic (extended Meteora)
 - `anchor/programs/transfer-hook/` - Separate hook program for testing
 
 **Why separate programs?**
 
 1. **Security isolation** - Hook program can't access AMM state
-2. **Reentrancy prevention** - Hook can't call back into AMM functions  
+2. **Reentrancy prevention** - Hook can't call back into AMM functions
 3. **Clear separation of concerns** - AMM handles trading, hooks handle compliance
 4. **Easier auditing** - Each program has single responsibility
 5. **Modularity** - Can swap out hook implementations without touching AMM
@@ -942,7 +952,7 @@ During development, we encountered:
 ```toml
 # This combination WILL FAIL:
 spl-token = "4.0.0"                       # Uses solana-program = "1.16.x"
-spl-token-2022 = "1.0.0"                 # Uses solana-program = "1.18.x" 
+spl-token-2022 = "1.0.0"                 # Uses solana-program = "1.18.x"
 spl-transfer-hook-interface = "0.3.0"     # Uses different borsh version
 solana-program = "2.0.0"                  # Latest version
 
@@ -971,9 +981,10 @@ solana-program = "2.0.0"                  # Latest version
 - **Version compatibility** - Which versions work together (trial and error)
 
 **Documentation sources we had to read:**
+
 - Solana Program Library repo: 15+ different README files
 - Transfer hook interface source code: ~3000 lines of Rust
-- Web3.js type definitions: Undocumented TypeScript interfaces  
+- Web3.js type definitions: Undocumented TypeScript interfaces
 - Anchor examples: None existed for transfer hooks
 - Community forums: Discord threads with partial solutions
 - GitHub issues: Bug reports that contained actual working code
@@ -1051,7 +1062,7 @@ rm -rf target/ node_modules/ .anchor/
 cargo clean
 npm install
 
-# Error: "anchor build failed with exit code 101"  
+# Error: "anchor build failed with exit code 101"
 # Solution: Check Rust toolchain version
 rustup show
 rustup default stable
@@ -1076,7 +1087,7 @@ rustc --version  # rustc 1.75.0 or newer
 # Solana CLI
 solana --version  # solana-cli 1.18.22 or newer
 
-# Anchor CLI  
+# Anchor CLI
 anchor --version  # anchor-cli 0.30.1
 
 # Node.js
