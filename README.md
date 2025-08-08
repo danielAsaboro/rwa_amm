@@ -775,20 +775,126 @@ describe('Transfer Hook Integration', () => {
 })
 ```
 
-## How to Use This
+## Development Setup & Usage
 
-### Build and Deploy
+### Prerequisites
+
+Before getting started, ensure you have the exact versions installed to avoid dependency conflicts:
 
 ```bash
-# Build the program
-anchor build
+# Rust toolchain
+rustup default stable-x86_64-apple-darwin  # or your platform
+rustc --version  # rustc 1.75.0 or newer
 
-# Deploy to devnet
-anchor deploy --provider.cluster devnet
+# Solana CLI
+solana --version  # solana-cli 1.18.22 or newer
 
-# Run tests (IMPORTANT: Use local flag for admin features)
-anchor test -- --features local
+# Anchor CLI
+anchor --version  # anchor-cli 0.30.1
+
+# Node.js (use .nvmrc if available)
+node --version   # v18.19.0 or newer
+npm --version    # 10.2.3 or newer
 ```
+
+**⚠️ IMPORTANT**: Use exact dependency versions. Solana's ecosystem has severe version compatibility issues. See our [Dependency Hell section](#dependency-hell-solved) for the working combination.
+
+### Quick Start
+
+```bash
+# 1. Clone and install dependencies
+npm install
+
+# 2. Build the Anchor programs
+npm run anchor-build
+
+# 3. Run comprehensive tests
+npm run anchor-test
+
+# 4. Start the development server
+npm run dev
+
+# 5. Deploy to devnet (optional)
+npm run anchor -- deploy --provider.cluster devnet
+```
+
+### Available Scripts
+
+```bash
+# Core Development
+npm run dev              # Start Next.js frontend (with Turbopack)
+npm run build            # Build production frontend
+npm run start            # Start production server
+
+# Anchor/Solana Development  
+npm run anchor-build     # Build programs (with local features)
+npm run anchor-test      # Run full test suite (with local features)
+npm run anchor-localnet  # Start local Solana validator
+npm run anchor -- [cmd]  # Run anchor commands (e.g., deploy)
+
+# Code Quality
+npm run lint             # ESLint checking
+npm run format           # Format code with Prettier
+npm run format:check     # Check formatting
+npm run ci               # Full CI pipeline (build + lint + format:check)
+
+# Testing
+npm run ts-mocha         # Run Mocha tests
+npm run ts-mocha [file]  # Run specific test file
+```
+
+### Deployment
+
+**Local Development:**
+```bash
+npm run anchor-localnet  # Terminal 1: Start validator
+npm run anchor-build     # Terminal 2: Build programs  
+npm run anchor -- deploy --provider.cluster localnet
+npm run dev              # Start frontend
+```
+
+**Devnet Deployment:**
+```bash
+solana config set --url devnet
+npm run anchor -- deploy --provider.cluster devnet
+```
+
+```
+
+## Platform Usage Guide
+
+The frontend provides a complete web interface for RWA token trading with compliance features.
+
+### Quick Start Guide
+
+```bash
+npm run dev  # Start platform at http://localhost:3000
+```
+
+**Complete Flow:** Connect Wallet → KYC Verification → Create RWA Token → Create Pool → Trade
+
+### Platform Pages
+
+- **Homepage (`/`)**: Platform overview and navigation
+- **KYC (`/kyc`)**: Multi-level identity verification (Basic/Enhanced/Institutional)  
+- **Create Asset (`/create-mint`)**: Mint Token-2022 assets with compliance features
+- **Create Pool (`/create-pool`)**: Create trading pools with fee configuration
+- **Trade (`/trade`)**: Execute swaps with automatic compliance validation
+- **Add Liquidity (`/add-liquidity`)**: Provide liquidity and earn fees
+- **Admin (`/admin`)**: Hook registry and system management
+
+### Key Features
+
+- **Automatic Compliance**: KYC validation, geographic restrictions, trading hours enforcement
+- **Transfer Hook Integration**: Seamless RWA token handling with account resolution
+- **Smart Trading**: Real-time quotes, slippage protection, liquidity warnings
+- **Portfolio Management**: Track holdings, positions, and trade history
+
+### Live Demo
+
+- **Platform**: https://rwa-amm-2wup.vercel.app/
+- **Demo Video**: [3-minute walkthrough](https://github.com/user-attachments/assets/7a946a2e-6154-48b5-a651-f62ee8c0b52f)
+- **Test Results**: [Passing tests](https://github.com/user-attachments/assets/f31e956a-a69f-41b4-a746-1630b8ca1b28)
 
 ### Create a Hook-Enabled Pool
 
@@ -1114,6 +1220,385 @@ npm --version    # 10.2.3 or newer
 6. **Clean between updates** - Always clean build artifacts when changing versions
 
 **This took us weeks to figure out. Save yourself the pain and use our exact versions.**
+
+## Troubleshooting & Common Issues
+
+### Build & Deployment Issues
+
+#### **"anchor build failed with exit code 101"**
+```bash
+Problem: Build process fails with generic error
+Root Cause: Often dependency version conflicts or missing components
+
+Solution:
+1. Clean all build artifacts
+   rm -rf target/ node_modules/ .anchor/
+   cargo clean
+
+2. Verify Rust toolchain
+   rustup show
+   rustup default stable
+   rustup component add rustfmt
+
+3. Reinstall with exact versions
+   npm install
+
+4. Check Solana CLI version
+   solana --version  # Must be 1.18.22+
+
+5. Rebuild step by step
+   npm run anchor-build
+```
+
+#### **"multiple versions of solana-program" Error**
+```bash
+Problem: Dependency conflict between different SPL crates
+Root Cause: Different SPL crates pulling incompatible solana-program versions
+
+Solution:
+1. Use the exact versions from our Cargo.toml
+2. Clear cargo cache: cargo clean
+3. Force update: cargo update
+4. Check with: cargo tree | grep solana-program
+   Should show only ONE version across all deps
+```
+
+#### **"program-test" feature conflicts**
+```bash
+Problem: Feature flag conflicts during testing
+Root Cause: Inconsistent feature flags across SPL dependencies
+
+Solution:
+Add to Cargo.toml:
+[dependencies]
+spl-token = { version = "6.0.0", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "4.0.0", features = ["no-entrypoint"] }
+```
+
+### Frontend Issues
+
+#### **"Module not found" Errors**
+```bash
+Problem: Missing dependencies or version mismatches
+Root Cause: NPM dependency resolution issues
+
+Solution:
+1. Delete node_modules and package-lock.json
+   rm -rf node_modules package-lock.json
+   
+2. Clear NPM cache
+   npm cache clean --force
+   
+3. Reinstall with exact versions
+   npm install
+   
+4. For persistent issues, use npm ci instead of npm install
+```
+
+#### **"Wallet Connection Failed"**
+```bash
+Problem: Wallet adapter not working
+Root Cause: Version conflicts in wallet adapter packages
+
+Diagnosis:
+Check browser console for errors like:
+- "Connection rejected by wallet"
+- "Adapter not found"
+- "Invalid cluster"
+
+Solution:
+1. Verify wallet is installed and unlocked
+2. Check network (devnet/localnet) matches wallet setting
+3. Ensure exact wallet adapter versions:
+   "@solana/wallet-adapter-react": "0.15.39"
+   "@solana/wallet-adapter-wallets": "^0.19.32"
+```
+
+### Transfer Hook Issues
+
+#### **"Hook Execution Failed" During Swaps**
+```bash
+Problem: Transfer hook rejects transaction
+Root Cause: Various compliance or technical issues
+
+Diagnosis Steps:
+1. Check hook whitelist status:
+   - Navigate to Admin Panel
+   - Verify hook program is in registry
+   
+2. Check user compliance:
+   - KYC level sufficient?
+   - Geographic restrictions met?
+   - Trading hours active?
+   - Volume limits not exceeded?
+   
+3. Check transaction logs on Explorer:
+   - Hook program called?
+   - Error message in logs?
+   - Account resolution issues?
+```
+
+#### **"Account Resolution Failed" for Hooks**
+```bash
+Problem: Cannot resolve additional accounts needed by hooks
+Root Cause: Frontend cannot determine required accounts
+
+Solution:
+1. Verify ExtraAccountMetaList exists:
+   solana account [EXTRA_ACCOUNT_META_PDA] --url [CLUSTER]
+   
+2. Check hook program deployment:
+   solana program show [HOOK_PROGRAM_ID] --url [CLUSTER]
+   
+3. Verify hook is properly initialized:
+   - Check create-transfer-hook script ran successfully
+   - Confirm ExtraAccountMetaList created
+```
+
+### Pool & AMM Issues
+
+#### **"No Pool Available" for Token Pair**
+```bash
+Problem: Cannot find trading pool for desired tokens
+Root Cause: Pool doesn't exist or wrong pool address
+
+Solution:
+1. Check if pool exists:
+   solana account [POOL_ADDRESS] --url [CLUSTER]
+   
+2. Create pool if needed:
+   Navigation → Create Pool → Select tokens → Deploy
+   
+3. Verify token mints are correct:
+   - Check token addresses match exactly
+   - Confirm tokens are on the same network
+```
+
+#### **"Price Impact Too High" Warnings**
+```bash
+Problem: Large price impact warnings on swaps
+Root Cause: Insufficient pool liquidity
+
+Solutions:
+1. Add more liquidity to the pool:
+   Navigation → Add Liquidity → Select pool → Provide tokens
+   
+2. Reduce swap amount:
+   - Use suggested "safe amount" 
+   - Try smaller incremental swaps
+   
+3. Increase slippage tolerance:
+   - Settings → Slippage → Increase from default
+   - Be careful with MEV exposure
+```
+
+### Testing Issues
+
+#### **"Test timeout" or "Test hanging"**
+```bash
+Problem: Tests don't complete or hang indefinitely
+Root Cause: Network connection or validator issues
+
+Solution:
+1. Check local validator is running:
+   solana-test-validator --version
+   
+2. Restart validator:
+   pkill solana-test-validator
+   npm run anchor-localnet
+   
+3. Check validator logs:
+   tail -f test-ledger/validator.log
+   
+4. Run tests with verbose output:
+   npm run anchor-test -- --verbose
+```
+
+#### **"Insufficient SOL" in Tests**
+```bash
+Problem: Test accounts don't have enough SOL
+Root Cause: Airdrop limits or validator reset
+
+Solution:
+1. Airdrop more SOL to test accounts:
+   solana airdrop 10 [ACCOUNT] --url localhost
+   
+2. Check validator is funded:
+   solana balance --url localhost
+   
+3. Reset validator if needed:
+   rm -rf test-ledger/
+   npm run anchor-localnet
+```
+
+### Network & Deployment Issues
+
+#### **"RPC Error: Connection Refused"**
+```bash
+Problem: Cannot connect to Solana RPC
+Root Cause: Network configuration or endpoint issues
+
+Solution:
+1. Check Solana config:
+   solana config get
+   
+2. Set correct RPC endpoint:
+   solana config set --url devnet  # or localhost/mainnet
+   
+3. Test connection:
+   solana epoch-info
+   
+4. For local development:
+   solana config set --url http://localhost:8899
+```
+
+#### **"Program deployment failed"**
+```bash
+Problem: Cannot deploy program to network
+Root Cause: Insufficient SOL, network issues, or program size limits
+
+Solution:
+1. Check deployer account balance:
+   solana balance
+   
+2. Add SOL for deployment:
+   solana airdrop 5  # for devnet
+   
+3. Check program size:
+   ls -la target/deploy/*.so
+   # Should be < 1MB for most programs
+   
+4. Use deployment script:
+   npm run anchor -- deploy --program-id [PROGRAM_ID]
+```
+
+### Performance Issues
+
+#### **Slow Frontend Loading**
+```bash
+Problem: Platform takes long time to load
+Root Cause: Bundle size or network requests
+
+Solutions:
+1. Use development build:
+   npm run dev  # Much faster than production build
+   
+2. Enable Turbopack:
+   npm run dev  # Already configured with --turbopack
+   
+3. Check bundle analyzer:
+   npm run build
+   # Look for large dependencies
+```
+
+#### **Slow Transaction Processing**
+```bash
+Problem: Transactions take long time to confirm
+Root Cause: Network congestion or insufficient priority fees
+
+Solutions:
+1. For local development:
+   - Restart local validator
+   - Clear validator state: rm -rf test-ledger/
+   
+2. For devnet/mainnet:
+   - Increase compute units
+   - Add priority fees to transactions
+   - Try during off-peak hours
+```
+
+### Recovery Procedures
+
+#### **Complete Environment Reset**
+When everything is broken, nuclear option:
+```bash
+# 1. Stop all processes
+pkill solana-test-validator
+pkill node
+
+# 2. Clean everything
+rm -rf target/ node_modules/ .anchor/ test-ledger/
+cargo clean
+npm cache clean --force
+
+# 3. Reinstall everything
+npm install
+rustup update stable
+
+# 4. Rebuild from scratch
+npm run anchor-build
+npm run anchor-test
+npm run dev
+```
+
+#### **Database/State Reset**
+For persistent state issues:
+```bash
+# Reset local validator state
+rm -rf test-ledger/
+
+# Reset anchor build cache
+rm -rf .anchor/
+
+# Reset node_modules
+rm -rf node_modules/
+npm install
+
+# Start fresh
+npm run anchor-localnet
+npm run anchor-build
+```
+
+### Debugging Tools & Techniques
+
+#### **Enable Debug Logging**
+```bash
+# Anchor program logs
+ANCHOR_LOG=debug npm run anchor-test
+
+# Solana validator logs
+solana-test-validator --log
+
+# Frontend debug
+DEBUG=* npm run dev
+```
+
+#### **Transaction Analysis**
+```bash
+# Get detailed transaction info
+solana transaction [SIGNATURE] --url [CLUSTER] --verbose
+
+# Check program logs
+solana logs [PROGRAM_ID] --url [CLUSTER]
+
+# Monitor real-time logs
+solana logs --url [CLUSTER]
+```
+
+#### **Account Inspection**
+```bash
+# Check account data
+solana account [ADDRESS] --url [CLUSTER] --output-format json
+
+# Check token account details
+spl-token account-info [TOKEN_ACCOUNT] --url [CLUSTER]
+
+# List all accounts for a program
+solana program show [PROGRAM_ID] --accounts --url [CLUSTER]
+```
+
+### Development Best Practices
+
+```bash
+# Daily development routine:
+npm run anchor-localnet  # Start validator (keep running) 
+npm run anchor-build     # Build programs
+npm run anchor-test      # Run tests
+npm run dev              # Start frontend
+
+# Before committing:
+npm run ci               # Lint + format + build checks
+```
 
 ## Results
 
