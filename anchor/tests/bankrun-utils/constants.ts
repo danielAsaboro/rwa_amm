@@ -20,5 +20,3 @@ export const U64_MAX = new BN('18446744073709551615')
 // Set the decimals, fee basis points, and maximum fee
 export const FEE_BASIS_POINT = 100 // 1%
 export const MAX_FEE = BigInt(9 * Math.pow(10, DECIMALS)) // 9 tokens
-
-export const TEST_TRANSFER_HOOK_PROGRAM_ID = new PublicKey('EBZDYx7599krFc4m2govwBdZcicr4GgepqC78m71nsHS')
