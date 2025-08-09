@@ -11,8 +11,8 @@ export { RwaAmm, RWAIDL as CounterIDL }
 export const COUNTER_PROGRAM_ID = new PublicKey(RWAIDL.address)
 
 // This is a helper function to get the Counter Anchor program.
-export function getCounterProgram(provider: AnchorProvider, address?: PublicKey): Program<RWA> {
-  return new Program({ ...RWAIDL, address: address ? address.toBase58() : RWAIDL.address } as RWA, provider)
+export function getCounterProgram(provider: AnchorProvider, address?: PublicKey): Program<RwaAmm> {
+  return new Program({ ...RWAIDL, address: address ? address.toBase58() : RWAIDL.address } as RwaAmm, provider)
 }
 
 // This is a helper function to get the program ID for the Counter program depending on the cluster.
