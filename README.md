@@ -1,7 +1,5 @@
 # 📽️ Demo
 
-https://github.com/user-attachments/assets/7a946a2e-6154-48b5-a651-f62ee8c0b52f
-
 [Watch the full walkthrough »](https://github.com/user-attachments/assets/7a946a2e-6154-48b5-a651-f62ee8c0b52f)
 
 > Prefer video? Skip straight to the 3-minute demo above.
